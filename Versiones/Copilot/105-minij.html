@@ -1,0 +1,394 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>MiniJuego Combinado</title>
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #222;
+        color: #fff;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    #sidebarP1, #sidebarP2 {
+        width: 220px;
+        background: #111;
+        padding: 10px;
+        font-size: 24px;
+        height: 100vh;
+    }
+
+    #sidebarP1 {
+        position: fixed;
+        left: 0;
+        top: 0;
+        border-right: 2px solid #444;
+    }
+
+    #sidebarP2 {
+        position: fixed;
+        right: 0;
+        top: 0;
+        border-left: 2px solid #444;
+    }
+
+    .weapon {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        cursor: pointer;
+    }
+
+    .shortcuts {
+        margin-top: 20px;
+        font-size: 18px;
+        color: #ccc;
+    }
+
+    #gameArea {
+        position: relative;
+        width: 800px;
+        height: 800px;
+        background: #333;
+        border: 4px solid #fff;
+        box-shadow: 0 0 20px rgba(0,0,0,0.7);
+    }
+
+    .quadrant {
+        position: absolute;
+        width: 50%;
+        height: 50%;
+        border: 1px dashed #555;
+    }
+    .quadrant:nth-child(1) { top: 0; left: 0; }
+    .quadrant:nth-child(2) { top: 0; left: 50%; }
+    .quadrant:nth-child(3) { top: 50%; left: 0; }
+    .quadrant:nth-child(4) { top: 50%; left: 50%; }
+
+    .player, .enemy {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        background: #0f0;
+        border-radius: 50%;
+    }
+    .enemy { background: #f00; }
+
+    .bullet-player {
+        position: absolute;
+        height: 2px;
+        background: lime;
+    }
+
+    .bullet-enemy {
+        position: absolute;
+        height: 2px;
+        background: red;
+    }
+
+    .health-bar {
+        position: absolute;
+        width: 30px;
+        height: 5px;
+        background: red;
+        top: -8px;
+        left: 0;
+    }
+
+    #ggMessage {
+        display: none;
+        font-size: 48px;
+        color: #0f0;
+        text-align: center;
+        margin-top: 20px;
+    }
+
+    #menu {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+</style>
+</head>
+<body>
+<div id="sidebarP1">
+    <h2>Jugador 1</h2>
+    <div id="weaponListP1"></div>
+    <div class="shortcuts">
+        <p>Disparo: Espacio</p>
+        <p>Cambiar arma: Z</p>
+        <p>Movimiento: WASD</p>
+    </div>
+</div>
+<div>
+    <h1 style="text-align:center;">MiniJuego Combinado</h1>
+    <div id="menu">
+        <button onclick="startGame('single')">Jugador Único</button>
+        <button onclick="startGame('multi')">Multijugador</button>
+    </div>
+    <div id="gameArea">
+        <div class="quadrant"></div>
+        <div class="quadrant"></div>
+        <div class="quadrant"></div>
+        <div class="quadrant"></div>
+    </div>
+    <div id="ggMessage">GG</div>
+</div>
+<div id="sidebarP2">
+    <h2>Jugador 2</h2>
+    <div id="weaponListP2"></div>
+    <div class="shortcuts">
+        <p>Disparo: Enter</p>
+        <p>Cambiar arma: \</p>
+        <p>Movimiento: Flechas</p>
+    </div>
+</div>
+
+<script>
+const gameArea = document.getElementById('gameArea');
+const ggMessage = document.getElementById('ggMessage');
+const weaponListP1 = document.getElementById('weaponListP1');
+const weaponListP2 = document.getElementById('weaponListP2');
+let players = [];
+let enemies = [];
+let bulletsPlayer = [];
+let bulletsEnemy = [];
+let gameRunning = false;
+let weapons = [
+    {name:'COLT M1911A1', speed:7, damage:20},
+    {name:'USP', speed:8, damage:18},
+    {name:'KAR98K', speed:10, damage:40},
+    {name:'UZI', speed:12, damage:10},
+    {name:'AUG A1', speed:9, damage:15}
+];
+let currentWeaponP1 = weapons[0];
+let currentWeaponP2 = weapons[1];
+let keysPressed = {};
+
+function randomName() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return 'Player_' + chars[Math.floor(Math.random()*chars.length)] + Math.floor(Math.random()*100);
+}
+
+function renderWeapons() {
+    weaponListP1.innerHTML = '';
+    weaponListP2.innerHTML = '';
+    weapons.forEach((w)=>{
+        const div1 = document.createElement('div');
+        div1.className = 'weapon';
+        div1.innerHTML = `<span>${w.name}</span>`;
+        div1.onclick = ()=>{ currentWeaponP1 = w; };
+        weaponListP1.appendChild(div1);
+
+        const div2 = document.createElement('div');
+        div2.className = 'weapon';
+        div2.innerHTML = `<span>${w.name}</span>`;
+        div2.onclick = ()=>{ currentWeaponP2 = w; };
+        weaponListP2.appendChild(div2);
+    });
+}
+
+function startGame(mode) {
+    document.getElementById('menu').style.display = 'none';
+    gameArea.style.display = 'block';
+    gameRunning = true;
+    renderWeapons();
+
+    if (mode === 'single') {
+        players.push(createPlayer(100,100,randomName(),'player1'));
+    } else {
+        players.push(createPlayer(100,100,randomName(),'player1'));
+        players.push(createPlayer(600,600,randomName(),'player2'));
+    }
+
+    for (let i=0; i<5; i++) {
+        enemies.push(createEnemy(Math.random()*750, Math.random()*750));
+    }
+
+    gameLoop();
+}
+
+function createPlayer(x,y,name,id) {
+    const div = document.createElement('div');
+    div.className = 'player';
+    div.style.left = x+'px';
+    div.style.top = y+'px';
+    div.dataset.name = name;
+    div.dataset.id = id;
+    const health = document.createElement('div');
+    health.className = 'health-bar';
+    div.appendChild(health);
+    gameArea.appendChild(div);
+    return {el: div, x:x, y:y, speed:8, health:100, direction:{x:0,y:-1}};
+}
+
+function createEnemy(x,y) {
+    const div = document.createElement('div');
+    div.className = 'enemy';
+    div.style.left = x+'px';
+    div.style.top = y+'px';
+    const health = document.createElement('div');
+    health.className = 'health-bar';
+    div.appendChild(health);
+    gameArea.appendChild(div);
+    return {el: div, x:x, y:y, speed:2, health:50, dirX:(Math.random()>0.5?1:-1), dirY:(Math.random()>0.5?1:-1)};
+}
+
+document.addEventListener('keydown', e => {
+    keysPressed[e.key] = true;
+    if (!gameRunning) return;
+
+    players.forEach(p => {
+        if (p.el.dataset.id === 'player1') {
+            if (e.key === ' ') shootPlayer(p,currentWeaponP1);
+            if (e.key === 'z') changeWeapon('p1');
+        }
+        if (p.el.dataset.id === 'player2') {
+            if (e.key === 'Enter') shootPlayer(p,currentWeaponP2);
+            if (e.key === '\\') changeWeapon('p2');
+        }
+    });
+});
+
+document.addEventListener('keyup', e => {
+    delete keysPressed[e.key];
+});
+
+function changeWeapon(player) {
+    if (player==='p1') {
+        let index = weapons.indexOf(currentWeaponP1);
+        currentWeaponP1 = weapons[(index+1)%weapons.length];
+    } else {
+        let index = weapons.indexOf(currentWeaponP2);
+        currentWeaponP2 = weapons[(index+1)%weapons.length];
+    }
+    renderWeapons();
+}
+
+function shootPlayer(player,weapon) {
+    const bullet = document.createElement('div');
+    bullet.className = 'bullet-player';
+    bullet.style.left = (player.x+15)+'px';
+    bullet.style.top = (player.y+15)+'px';
+    bullet.style.width = '10px';
+    gameArea.appendChild(bullet);
+    bulletsPlayer.push({el: bullet, x: player.x+15, y: player.y+15, dx:player.direction.x, dy:player.direction.y, speed:weapon.speed, damage:weapon.damage});
+}
+
+function shootEnemy(enemy,target) {
+    const bullet = document.createElement('div');
+    bullet.className = 'bullet-enemy';
+    bullet.style.left = (enemy.x+15)+'px';
+    bullet.style.top = (enemy.y+15)+'px';
+    bullet.style.width = '10px';
+    gameArea.appendChild(bullet);
+
+    let dx = target.x - enemy.x;
+    let dy = target.y - enemy.y;
+    let length = Math.sqrt(dx*dx+dy*dy);
+    dx /= length; dy /= length;
+
+    bulletsEnemy.push({el: bullet, x: enemy.x+15, y: enemy.y+15, dx:dx, dy:dy, speed:6, damage:10});
+}
+
+function gameLoop() {
+    if (!gameRunning) return;
+
+    // Movimiento jugadores
+    players.forEach(p => {
+        if (p.el.dataset.id==='player1') {
+            if (keysPressed['w']){ p.y-=p.speed; p.direction={x:0,y:-1}; }
+            if (keysPressed['s']){ p.y+=p.speed; p.direction={x:0,y:1}; }
+            if (keysPressed['a']){ p.x-=p.speed; p.direction={x:-1,y:0}; }
+            if (keysPressed['d']){ p.x+=p.speed; p.direction={x:1,y:0}; }
+        }
+        if (p.el.dataset.id==='player2') {
+            if (keysPressed['ArrowUp']){ p.y-=p.speed; p.direction={x:0,y:-1}; }
+            if (keysPressed['ArrowDown']){ p.y+=p.speed; p.direction={x:0,y:1}; }
+            if (keysPressed['ArrowLeft']){ p.x-=p.speed; p.direction={x:-1,y:0}; }
+            if (keysPressed['ArrowRight']){ p.x+=p.speed; p.direction={x:1,y:0}; }
+        }
+        p.x=Math.max(0,Math.min(770,p.x));
+        p.y=Math.max(0,Math.min(770,p.y));
+        p.el.style.left=p.x+'px';
+        p.el.style.top=p.y+'px';
+        p.el.querySelector('.health-bar').style.width=(p.health/100*30)+'px';
+    });
+
+    // Balas jugador
+    bulletsPlayer.forEach((b,i)=>{
+        b.x+=b.dx*b.speed;
+        b.y+=b.dy*b.speed;
+        b.el.style.left=b.x+'px';
+        b.el.style.top=b.y+'px';
+        if(b.x<0||b.x>800||b.y<0||b.y>800){
+            gameArea.removeChild(b.el);
+            bulletsPlayer.splice(i,1);
+        }
+        enemies.forEach((en,j)=>{
+            if(Math.abs(b.x-en.x)<20&&Math.abs(b.y-en.y)<20){
+                en.health-=b.damage;
+                if(en.health<=0){
+                    gameArea.removeChild(en.el);
+                    enemies.splice(j,1);
+                }
+                gameArea.removeChild(b.el);
+                bulletsPlayer.splice(i,1);
+            }
+        });
+    });
+
+    // Balas enemigo
+    bulletsEnemy.forEach((b,i)=>{
+        b.x+=b.dx*b.speed;
+        b.y+=b.dy*b.speed;
+        b.el.style.left=b.x+'px';
+        b.el.style.top=b.y+'px';
+        if(b.x<0||b.x>800||b.y<0||b.y>800){
+            gameArea.removeChild(b.el);
+            bulletsEnemy.splice(i,1);
+        }
+        players.forEach((p)=>{
+            if(Math.abs(b.x-p.x)<20&&Math.abs(b.y-p.y)<20){
+                p.health-=b.damage;
+                if(p.health<=0){
+                    gameArea.removeChild(p.el);
+                }
+                gameArea.removeChild(b.el);
+                bulletsEnemy.splice(i,1);
+            }
+        });
+    });
+
+    // Enemigos movimiento y disparo
+    enemies.forEach(en=>{
+        en.x+=en.dirX*en.speed;
+        en.y+=en.dirY*en.speed;
+        if(en.x<=0||en.x>=770) en.dirX*=-1;
+        if(en.y<=0||en.y>=770) en.dirY*=-1;
+        en.el.style.left=en.x+'px';
+        en.el.style.top=en.y+'px';
+        en.el.querySelector('.health-bar').style.width=(en.health/50*30)+'px';
+
+        if(Math.random()<0.02 && players.length>0){
+            let target = players[Math.floor(Math.random()*players.length)];
+            shootEnemy(en,target);
+        }
+    });
+
+    if(enemies.length===0){
+        gameRunning=false;
+        ggMessage.style.display='block';
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
+

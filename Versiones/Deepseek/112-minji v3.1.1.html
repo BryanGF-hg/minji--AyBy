@@ -1,0 +1,3580 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fusión: Guerra y Paz - Versión Mejorada</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, #1a3a1a 0%, #0a2a0a 100%),
+                linear-gradient(135deg, #0a2a0a 0%, #1a3a1a 100%);
+            z-index: 1;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 25px;
+            z-index: 1000;
+        }
+        
+        button {
+            padding: 18px 35px;
+            font-size: 1.3rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.4s;
+            font-weight: bold;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #btnPeace {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32, #1B5E20);
+            color: white;
+            border: 2px solid #81C784;
+        }
+        
+        #btnWar {
+            background: linear-gradient(135deg, #f44336, #c62828, #b71c1c);
+            color: white;
+            border: 2px solid #ef5350;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+        
+        button:active {
+            transform: translateY(2px);
+        }
+        
+        /* Nuevo mapa de estado */
+        #statusMap {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            min-width: 200px;
+        }
+        
+        .status-item {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-emoji {
+            margin-right: 8px;
+            font-size: 1.2rem;
+        }
+        
+        /* Barras de estado */
+        .status-bars {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .bar-container {
+            display: flex;
+            align-items: center;
+        }
+        
+        .bar-label {
+            width: 70px;
+            font-size: 0.9rem;
+        }
+        
+        .bar {
+            flex-grow: 1;
+            height: 12px;
+            background: #333;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid #555;
+        }
+        
+        .health-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s;
+            box-shadow: 0 0 5px #4CAF50;
+        }
+        
+        .shield-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2196F3, #03A9F4);
+            transition: width 0.3s;
+            box-shadow: 0 0 5px #2196F3;
+        }
+        
+        /* Emojis de armas */
+        .weapon-emojis {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid #444;
+        }
+        
+        .weapon-emoji {
+            font-size: 1.8rem;
+            cursor: pointer;
+            text-align:center;
+            transition: all 0.3s;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        
+        .weapon-emoji:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.2);
+        }
+        
+        .weapon-emoji.active {
+            background: rgba(30, 80, 150, 0.7);
+            border: 1px solid #4a90e2;
+        }
+        
+        /* Balas blancas para la Kevenstka */
+        .bullet-kevenstka {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: radial-gradient(circle, #ffffff, #e0e0e0, #c0c0c0);
+            border-radius: 50%;
+            z-index: 90;
+            box-shadow: 0 0 15px #ffffff, 0 0 30px rgba(255, 255, 255, 0.7);
+            filter: blur(0.5px);
+            animation: kevenstka-glow 1.5s infinite alternate;
+        }
+
+        @keyframes kevenstka-glow {
+            0% { box-shadow: 0 0 15px #ffffff, 0 0 30px rgba(255, 255, 255, 0.7); }
+            100% { box-shadow: 0 0 20px #ffffff, 0 0 40px rgba(255, 255, 255, 0.9); }
+        }
+
+        /* Efectos de corte para el arma α */
+        .alpha-slash {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            z-index: 95;
+            pointer-events: none;
+            animation: alpha-slash-animation 0.4s forwards;
+        }
+
+        .slash-1 {
+            background: linear-gradient(45deg, transparent 40%, rgba(255, 255, 255, 0.8) 50%, transparent 60%);
+            filter: blur(1px);
+            transform: rotate(0deg);
+        }
+
+        .slash-2 {
+            background: linear-gradient(135deg, transparent 40%, rgba(255, 255, 255, 0.8) 50%, transparent 60%);
+            filter: blur(1px);
+            transform: rotate(45deg);
+        }
+
+        .slash-3 {
+            background: linear-gradient(90deg, transparent 40%, rgba(255, 255, 255, 0.8) 50%, transparent 60%);
+            filter: blur(1px);
+            transform: rotate(90deg);
+        }
+
+        @keyframes alpha-slash-animation {
+            0% { 
+                opacity: 0; 
+                transform: scale(0.5) rotate(0deg);
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.2) rotate(180deg);
+            }
+            100% { 
+                opacity: 0; 
+                transform: scale(1.5) rotate(360deg);
+            }
+        }
+
+        /* Indicador de recarga para Kevenstka */
+        .reload-indicator {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            overflow: hidden;
+            z-index: 1000;
+            display: none;
+        }
+
+        .reload-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        /* Efecto de explosión para granada */
+        .grenade-explosion {
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, #ff9800, #ff5722, #d84315, transparent);
+            border-radius: 50%;
+            z-index: 200;
+            animation: grenade-explode 0.8s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        @keyframes grenade-explode {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* Estilos existentes... */
+        #sidebarP1, #sidebarP2 {
+            width: 220px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px;
+            font-size: 24px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #sidebarP1 {
+            left: 0;
+            border-right: 2px solid #444;
+        }
+
+        #sidebarP2 {
+            right: 0;
+            border-left: 2px solid #444;
+        }
+
+        .weapon {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            background: rgba(50, 50, 50, 0.5);
+        }
+
+        .weapon:hover {
+            background: rgba(70, 70, 70, 0.7);
+        }
+
+        .weapon.active {
+            background: rgba(30, 80, 150, 0.7);
+            border: 1px solid #4a90e2;
+        }
+
+        .shortcuts {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ccc;
+        }
+
+        #gameArea {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .player, .enemy {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px black;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+        }
+        
+        .player { 
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            border: 2px solid #81C784;
+        }
+        
+        .enemy { 
+            background: linear-gradient(135deg, #f44336, #c62828);
+            border: 2px solid #ef5350;
+        }
+
+        .bullet-player {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #ffeb3b, #ffc107);
+            border-radius: 50%;
+            z-index: 90;
+            box-shadow: 0 0 12px #ff9800;
+            filter: blur(0.5px);
+        }
+
+        .bullet-enemy {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #ff5722, #d84315);
+            border-radius: 50%;
+            z-index: 90;
+            box-shadow: 0 0 12px #ff5722;
+            filter: blur(0.5px);
+        }
+
+        .health-bar {
+            position: absolute;
+            width: 40px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid #555;
+            top: -15px;
+            left: 0;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s;
+            box-shadow: 0 0 5px #4CAF50;
+        }
+
+        .shield-bar {
+            position: absolute;
+            width: 40px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid #555;
+            top: -25px;
+            left: 0;
+        }
+
+        .shield-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2196F3, #03A9F4);
+            transition: width 0.3s;
+            box-shadow: 0 0 5px #2196F3;
+        }
+
+        .damaged .health-fill {
+            background: linear-gradient(90deg, #ff9800, #ff5722);
+        }
+
+        .critical .health-fill {
+            background: linear-gradient(90deg, #f44336, #d32f2f);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .dead {
+            opacity: 0.7;
+            filter: grayscale(100%) brightness(0.5);
+            transform: scale(0.8);
+        }
+
+        #ggMessage {
+            display: none;
+            font-size: 48px;
+            color: #0f0;
+            text-align: center;
+            margin-top: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            text-shadow: 0 0 10px rgba(0,255,0,0.7);
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #resetButton {
+            display: none;
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, #4a90e2, #2d5a9e);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #resetButton:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        #menu {
+            text-align: center;
+            margin-bottom: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        .menu-button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            margin: 10px;
+            background: linear-gradient(135deg, #4a90e2, #2d5a9e);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .menu-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        /* Elementos del mapa */
+        .map-element {
+            position: absolute;
+            z-index: 2;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.4));
+        }
+        
+        .tree {
+            width: 50px;
+            height: 80px;
+            z-index: 5;
+        }
+        
+        .tree-trunk {
+            position: absolute;
+            width: 16px;
+            height: 40px;
+            background: linear-gradient(90deg, #5d4037, #4e342e);
+            bottom: 0;
+            left: 17px;
+            border-radius: 4px;
+            border: 1px solid #3e2723;
+        }
+        
+        .tree-top {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(ellipse at center, #2e7d32, #1b5e20);
+            border-radius: 50%;
+            top: 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .rock {
+            width: 35px;
+            height: 25px;
+            background: linear-gradient(135deg, #757575, #616161);
+            border-radius: 8px;
+            border: 2px solid #424242;
+        }
+        
+        .building {
+            background: linear-gradient(135deg, #8d6e63, #6d4c41);
+            border-radius: 8px;
+            box-shadow: 
+                0 0 15px rgba(0, 0, 0, 0.4),
+                inset 0 0 10px rgba(255,255,255,0.1);
+            border: 2px solid #5d4037;
+            overflow: hidden;
+            z-index: 5;
+        }
+        
+        .window {
+            position: absolute;
+            width: 8px;
+            height: 12px;
+            background: #81d4fa;
+            border-radius: 2px;
+            border: 1px solid #4fc3f7;
+        }
+        
+        .door {
+            position: absolute;
+            width: 12px;
+            height: 20px;
+            background: #5d4037;
+            bottom: 0;
+            border-radius: 2px 2px 0 0;
+            border: 1px solid #3e2723;
+        }
+        
+        .river {
+            position: absolute;
+            background: linear-gradient(90deg, #4a90e2, #2d5a9e, #4a90e2);
+            border-radius: 10px;
+            box-shadow: 
+                inset 0 0 20px rgba(0,0,0,0.3),
+                0 0 10px rgba(74, 144, 226, 0.5);
+        }
+        
+        .bridge {
+            position: absolute;
+            background: linear-gradient(45deg, #8d6e63, #6d4c41);
+            border: 2px solid #5d4037;
+            border-radius: 4px;
+            z-index: 3;
+        }
+        
+        .mountain {
+            position: absolute;
+            background: linear-gradient(135deg, #78909c, #546e7a);
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        }
+        
+        .terrain {
+            position: absolute;
+            z-index: 1;
+        }
+        
+        .grass {
+            background: radial-gradient(ellipse at center, #2e7d32, #1b5e20);
+            border-radius: 5px;
+        }
+        
+        .sand {
+            background: linear-gradient(135deg, #d7ccc8, #bcaaa4);
+            border-radius: 3px;
+        }
+
+        .explosion {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ff9800, #ff5722, #d84315, transparent);
+            border-radius: 50%;
+            z-index: 200;
+            animation: explode 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* Monedas */
+        .coin {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle at 30% 30%, #ffd700, #ff9800);
+            border-radius: 50%;
+            z-index: 50;
+            box-shadow: 0 0 10px #ffd700;
+            animation: coin-spin 2s linear infinite;
+        }
+
+        @keyframes coin-spin {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        /* Medkits */
+        .medkit {
+            position: absolute;
+            width: 30px;
+            height: 25px;
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            border-radius: 4px;
+            z-index: 50;
+            box-shadow: 0 0 8px rgba(244, 67, 54, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            color: white;
+            font-weight: bold;
+            border: 2px solid white;
+        }
+
+        .medkit::before {
+            content: "+";
+        }
+
+        /* Tienda */
+        #shop {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .shop-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+        }
+
+        .shop-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .shop-tab.active {
+            border-bottom: 3px solid #4a90e2;
+            color: #4a90e2;
+        }
+
+        .shop-content {
+            display: none;
+        }
+
+        .shop-content.active {
+            display: block;
+        }
+
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: rgba(50, 50, 50, 0.5);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .shop-item:hover {
+            background: rgba(70, 70, 70, 0.7);
+        }
+
+        .shop-item button {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+
+        .shop-item.owned {
+            background: rgba(30, 80, 30, 0.5);
+        }
+
+        .shop-item.owned button {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        /* Estilos para el Arsenal */
+        #arsenal {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            width: 90%;
+            max-width: 1000px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .arsenal-layout {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .character-preview {
+            background: rgba(50, 50, 50, 0.5);
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #444;
+        }
+
+        .character-display {
+            width: 200px;
+            height: 200px;
+            margin: 0 auto 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+
+        .character-model {
+            position: relative;
+        }
+
+        .player-preview {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            border-radius: 50%;
+            border: 2px solid #81C784;
+            position: relative;
+        }
+
+        .weapon-preview {
+            position: absolute;
+            bottom: -10px;
+            right: -20px;
+            font-size: 24px;
+        }
+
+        .current-info {
+            margin-top: 20px;
+        }
+
+        .current-info h4 {
+            color: #4a90e2;
+            margin-bottom: 10px;
+        }
+
+        .current-info p {
+            margin: 5px 0;
+            font-size: 0.9rem;
+        }
+
+        .arsenal-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+        }
+
+        .arsenal-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .arsenal-tab.active {
+            border-bottom: 3px solid #4a90e2;
+            color: #4a90e2;
+        }
+
+        .arsenal-tab-content {
+            display: none;
+        }
+
+        .arsenal-tab-content.active {
+            display: block;
+        }
+
+        .weapons-grid, .skins-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .arsenal-item {
+            background: rgba(50, 50, 50, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .arsenal-item:hover {
+            background: rgba(70, 70, 70, 0.9);
+            transform: translateY(-2px);
+        }
+
+        .arsenal-item.equipped {
+            border-color: #4CAF50;
+            background: rgba(76, 175, 80, 0.2);
+        }
+
+        .arsenal-item .item-icon {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+
+        .arsenal-item .item-name {
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .arsenal-item .item-type {
+            font-size: 0.8rem;
+            color: #ccc;
+        }
+
+        .arsenal-item .equip-button {
+            margin-top: 8px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            background: #4a90e2;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+        }
+
+        .arsenal-item .equipped-text {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .current-equipment {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .equipment-item {
+            background: rgba(50, 50, 50, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .equipment-item h4 {
+            color: #4a90e2;
+            margin-bottom: 10px;
+        }
+
+        .equipment-display {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Estilos para diferentes skins */
+        .skin-soldier .player-preview {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+        }
+
+        .skin-commando .player-preview {
+            background: linear-gradient(135deg, #607D8B, #455A64);
+        }
+
+        .skin-sniper .player-preview {
+            background: linear-gradient(135deg, #795548, #5D4037);
+        }
+
+        .skin-medic .player-preview {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+        }
+
+        /* Menú de armas - en la esquina inferior derecha */
+        #weaponMenu {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #444;
+        }
+
+        .weapon-menu-item {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(50, 50, 50, 0.7);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 24px;
+            text-align: center;
+            padding: 5px;
+        }
+
+        .weapon-menu-item:hover {
+            background: rgba(70, 70, 70, 0.9);
+        }
+
+        .weapon-menu-item.active {
+            background: rgba(30, 80, 150, 0.7);
+            border: 2px solid #4a90e2;
+        }
+
+        .weapon-desc {
+            font-size: 10px;
+            margin-top: 2px;
+            text-align: center;
+        }
+
+        /* Sombras */
+        .shadow {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%);
+            z-index: 1;
+        }
+
+        /* Mapa minimizado */
+        #miniMap {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 200px;
+            height: 150px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid #444;
+            border-radius: 8px;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            overflow: hidden;
+        }
+
+        .mini-map-player {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #4CAF50;
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .mini-map-enemy {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #f44336;
+            border-radius: 50%;
+            z-index: 2;
+        }
+
+        .mini-map-element {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+        }
+
+        /* Pantalla de pausa */
+        #pauseScreen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .pause-text {
+            font-size: 48px;
+            color: white;
+            margin-bottom: 30px;
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="map"></div>
+        <div id="gameArea"></div>
+        <div id="ggMessage">GG</div>
+        <button id="resetButton">REINICIAR JUEGO</button>
+        <div id="menu">
+            <h1 style="margin-bottom: 20px;">Fusión: Guerra y Paz</h1>
+            <!-- SE USA ESTA LÍNEA PARA MOSTRAR MONEDAS -->
+            <div id="menuCoins" style="font-size: 1.5rem; margin-bottom: 20px; color: #ffd700;">🪙 Monedas: <span id="menuCoinsCount">0</span></div>            
+            <button class="menu-button" onclick="startGame('single')">Jugador Único</button>
+            <button class="menu-button" onclick="startGame('multi')">Multijugador</button>
+            <button class="menu-button" onclick="showShop()">Tienda</button>
+            <button class="menu-button" onclick="showArsenal()">Arsenal</button>
+        </div>
+        <div id="pauseScreen">
+            <div class="pause-text">JUEGO EN PAUSA</div>
+            <button class="menu-button" onclick="togglePause()">Reanudar</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button id="btnPeace">🕊️ PAZ</button>
+        <button id="btnWar">⚔️ GUERRA</button>
+    </div>
+    
+    <!-- Nuevo mapa de estado -->
+    <div id="statusMap">
+        <div class="status-item">
+            <span class="status-emoji">🟢</span>
+            <span id="playersCount">Jugadores: 0/0</span>
+        </div>
+        <div class="status-item">
+            <span class="status-emoji">⭕️</span>
+            <span id="enemiesCount">Enemigos: 0/0</span>
+        </div>
+        <div class="status-item">
+            <span class="status-emoji">🪙</span>
+            <span id="coinsCount">Monedas: 0</span>
+        </div>
+        
+        <div class="status-bars">
+            <div class="bar-container">
+                <div class="bar-label">Salud:</div>
+                <div class="bar">
+                    <div class="health-bar-fill" id="healthBarFill" style="width: 100%"></div>
+                </div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-label">Escudo:</div>
+                <div class="bar">
+                    <div class="shield-bar-fill" id="shieldBarFill" style="width: 100%"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="weapon-emojis">
+            <div class="weapon-emoji active" data-weapon="pistol">🔫 <div class="weapon-desc">COLT M1911A1</div></div>
+            <div class="weapon-emoji" data-weapon="knife">🔪 <div class="weapon-desc"> HUNTING KNIFE</div></div>
+            <div class="weapon-emoji" data-weapon="grenade">💣 <div class="weapon-desc">GRENADE</div></div>
+        </div>
+    </div>
+
+    <div id="sidebarP1">
+        <h2>Jugador 1</h2>
+        <div id="weaponListP1"></div>
+        <div class="shortcuts">
+            <p>Disparo: Espacio</p>
+            <p>Cambiar arma: Z</p>
+            <p>Movimiento: WASD</p>
+            <p>Tienda: T</p>
+            <p>Pausa: ESC</p>
+        </div>
+    </div>
+
+    <div id="sidebarP2">
+        <h2>Jugador 2</h2>
+        <div id="weaponListP2"></div>
+        <div class="shortcuts">
+            <p>Disparo: Enter</p>
+            <p>Cambiar arma: \</p>
+            <p>Movimiento: Flechas</p>
+            <p>Tienda: T</p>
+            <p>Pausa: ESC</p>
+        </div>
+    </div>
+
+    <!-- Mapa minimizado -->
+    <div id="miniMap"></div>
+
+    <!-- Indicador de recarga -->
+    <div class="reload-indicator" id="reloadIndicator">
+        <div class="reload-bar" id="reloadBar"></div>
+    </div>
+
+    <!-- Tienda -->
+    <div id="shop">
+        <h2 style="text-align: center; margin-bottom: 20px;">TIENDA</h2>
+        <div class="shop-tabs">
+            <div class="shop-tab active" data-tab="weapons">Armas</div>
+            <div class="shop-tab" data-tab="melee">Armas Melee</div>
+            <div class="shop-tab" data-tab="legendary">Armas Legendarias</div>
+            <div class="shop-tab" data-tab="skins">Skins</div>
+            <div class="shop-tab" data-tab="upgrades">Mejoras</div>
+        </div>
+        
+        <div class="shop-content active" id="weapons-tab">
+            <h3>Armas Disponibles</h3>
+            <div class="shop-item" id="shop-luger">
+                <div>
+                    <h4>Luger P08</h4>
+                    <p>Pistola alemana de baja potencia</p>
+                </div>
+                <button onclick="buyWeapon('luger', 50)">Comprar (50 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-stg44">
+                <div>
+                    <h4>STG 44</h4>
+                    <p>Rifle de asalto alemán</p>
+                </div>
+                <button onclick="buyWeapon('stg44', 150)">Comprar (150 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-panzerfaust">
+                <div>
+                    <h4>Panzerfaust</h4>
+                    <p>Lanzacohetes alemán</p>
+                </div>
+                <button onclick="buyWeapon('panzerfaust', 200)">Comprar (200 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-kar98k">
+                <div>
+                    <h4>Kar98k</h4>
+                    <p>Rifle de francotirador alemán</p>
+                </div>
+                <button onclick="buyWeapon('kar98k', 100)">Comprar (100 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-mp40">
+                <div>
+                    <h4>MP40</h4>
+                    <p>Subfusil alemán</p>
+                </div>
+                <button onclick="buyWeapon('mp40', 120)">Comprar (120 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-mg42">
+                <div>
+                    <h4>MG42</h4>
+                    <p>Ametralladora alemana</p>
+                </div>
+                <button onclick="buyWeapon('mg42', 180)">Comprar (180 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-mosin">
+                <div>
+                    <h4>Mosin Nagant</h4>
+                    <p>Rifle de francotirador ruso</p>
+                </div>
+                <button onclick="buyWeapon('mosin', 90)">Comprar (90 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-ppsh">
+                <div>
+                    <h4>PPSh-41</h4>
+                    <p>Subfusil ruso</p>
+                </div>
+                <button onclick="buyWeapon('ppsh', 110)">Comprar (110 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-colt">
+                <div>
+                    <h4>Colt M1911</h4>
+                    <p>Pistola americana</p>
+                </div>
+                <button onclick="buyWeapon('colt', 60)">Comprar (60 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-flamethrower">
+                <div>
+                    <h4>M2 Flamethrower</h4>
+                    <p>Lanzallamas americano</p>
+                </div>
+                <button onclick="buyWeapon('flamethrower', 250)">Comprar (250 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-browning">
+                <div>
+                    <h4>Browning M1918</h4>
+                    <p>Rifle automático americano</p>
+                </div>
+                <button onclick="buyWeapon('browning', 160)">Comprar (160 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-bazooka">
+                <div>
+                    <h4>M1 Bazooka</h4>
+                    <p>Lanzacohetes americano</p>
+                </div>
+                <button onclick="buyWeapon('bazooka', 220)">Comprar (220 monedas)</button>
+            </div>
+            <!-- Nuevas armas -->
+            <div class="shop-item" id="shop-spas12">
+                <div>
+                    <h4>SPAS 12</h4>
+                    <p>Escopeta de combate</p>
+                </div>
+                <button onclick="buyWeapon('spas12', 180)">Comprar (180 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-m416">
+                <div>
+                    <h4>M416</h4>
+                    <p>Rifle de asalto moderno</p>
+                </div>
+                <button onclick="buyWeapon('m416', 200)">Comprar (200 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-dp28">
+                <div>
+                    <h4>DP-28</h4>
+                    <p>Ametralladora ligera</p>
+                </div>
+                <button onclick="buyWeapon('dp28', 170)">Comprar (170 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-q18c">
+                <div>
+                    <h4>Q18C</h4>
+                    <p>Pistola automática</p>
+                </div>
+                <button onclick="buyWeapon('q18c', 120)">Comprar (120 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-deagle50">
+                <div>
+                    <h4>D-Eagle 50</h4>
+                    <p>Pistola de alta potencia</p>
+                </div>
+                <button onclick="buyWeapon('deagle50', 150)">Comprar (150 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-mp4">
+                <div>
+                    <h4>MP4</h4>
+                    <p>Subfusil compacto</p>
+                </div>
+                <button onclick="buyWeapon('mp4', 130)">Comprar (130 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-m4">
+                <div>
+                    <h4>M4</h4>
+                    <p>Rifle de asalto</p>
+                </div>
+                <button onclick="buyWeapon('m4', 190)">Comprar (190 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-aws">
+                <div>
+                    <h4>AWS</h4>
+                    <p>Rifle de francotirador</p>
+                </div>
+                <button onclick="buyWeapon('aws', 220)">Comprar (220 monedas)</button>
+            </div>
+        </div>
+        
+        <div class="shop-content" id="melee-tab">
+            <h3>Armas Melee</h3>
+            <div class="shop-item" id="shop-axe">
+                <div>
+                    <h4>Axe</h4>
+                    <p>Hacha de combate</p>
+                </div>
+                <button onclick="buyWeapon('axe', 80)">Comprar (80 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-battleaxe">
+                <div>
+                    <h4>Battleaxe</h4>
+                    <p>Hacha de guerra</p>
+                </div>
+                <button onclick="buyWeapon('battleaxe', 120)">Comprar (120 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-spear">
+                <div>
+                    <h4>Spear</h4>
+                    <p>Lanza de combate</p>
+                </div>
+                <button onclick="buyWeapon('spear', 90)">Comprar (90 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-kunia">
+                <div>
+                    <h4>Kunia</h4>
+                    <p>Cuchillo de lanzamiento</p>
+                </div>
+                <button onclick="buyWeapon('kunia', 70)">Comprar (70 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-sword">
+                <div>
+                    <h4>Sword</h4>
+                    <p>Espada de combate</p>
+                </div>
+                <button onclick="buyWeapon('sword', 100)">Comprar (100 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-broadsword">
+                <div>
+                    <h4>Broadsword</h4>
+                    <p>Espada ancha</p>
+                </div>
+                <button onclick="buyWeapon('broadsword', 140)">Comprar (140 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-katana">
+                <div>
+                    <h4>Katana</h4>
+                    <p>Espada japonesa</p>
+                </div>
+                <button onclick="buyWeapon('katana', 160)">Comprar (160 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-tomahawk">
+                <div>
+                    <h4>Tomahawk</h4>
+                    <p>Hacha arrojadiza</p>
+                </div>
+                <button onclick="buyWeapon('tomahawk', 85)">Comprar (85 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-karambit">
+                <div>
+                    <h4>Karambit</h4>
+                    <p>Cuchillo curvo</p>
+                </div>
+                <button onclick="buyWeapon('karambit', 75)">Comprar (75 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-foldingknife">
+                <div>
+                    <h4>Folding Knife</h4>
+                    <p>Navaja plegable</p>
+                </div>
+                <button onclick="buyWeapon('foldingknife', 60)">Comprar (60 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-hammer">
+                <div>
+                    <h4>Hammer</h4>
+                    <p>Martillo de combate</p>
+                </div>
+                <button onclick="buyWeapon('hammer', 95)">Comprar (95 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-sickle">
+                <div>
+                    <h4>Sickle</h4>
+                    <p>Hoz de combate</p>
+                </div>
+                <button onclick="buyWeapon('sickle', 80)">Comprar (80 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-mace">
+                <div>
+                    <h4>Mace</h4>
+                    <p>Maza de combate</p>
+                </div>
+                <button onclick="buyWeapon('mace', 110)">Comprar (110 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-scimitar">
+                <div>
+                    <h4>Scimitar</h4>
+                    <p>Cimitarra curva</p>
+                </div>
+                <button onclick="buyWeapon('scimitar', 130)">Comprar (130 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-whip">
+                <div>
+                    <h4>Whip</h4>
+                    <p>Látigo de combate</p>
+                </div>
+                <button onclick="buyWeapon('whip', 70)">Comprar (70 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-glaive">
+                <div>
+                    <h4>Glaive</h4>
+                    <p>Guadaña de combate</p>
+                </div>
+                <button onclick="buyWeapon('glaive', 150)">Comprar (150 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-shieldwithgun">
+                <div>
+                    <h4>Shield with Gun</h4>
+                    <p>Escudo con pistola integrada</p>
+                </div>
+                <button onclick="buyWeapon('shieldwithgun', 200)">Comprar (200 monedas)</button>
+            </div>
+        </div>
+        
+        <div class="shop-content" id="legendary-tab">
+            <h3>Armas Legendarias</h3>
+            <div class="shop-item" id="shop-kevenstka">
+                <div>
+                    <h4>Kevenstka</h4>
+                    <p>Rifle de francotirador legendario con balas blancas</p>
+                </div>
+                <button onclick="buyWeapon('kevenstka', 500)">Comprar (500 monedas)</button>
+            </div>
+            <div class="shop-item" id="shop-alpha">
+                <div>
+                    <h4>Arma α</h4>
+                    <p>Arma legendaria con triple corte simultáneo</p>
+                </div>
+                <button onclick="buyWeapon('alpha', 500)">Comprar (500 monedas)</button>
+            </div>
+        </div>
+        
+        <div class="shop-content" id="skins-tab">
+            <h3>Skins de Personaje</h3>
+            <div class="shop-item">
+                <div>
+                    <h4>Soldado Básico</h4>
+                    <p>Aspecto estándar de soldado</p>
+                </div>
+                <button onclick="buySkin('soldier', 50)">Comprar (50 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Comando</h4>
+                    <p>Uniforme de operaciones especiales</p>
+                </div>
+                <button onclick="buySkin('commando', 100)">Comprar (100 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Francotirador</h4>
+                    <p>Uniforme de camuflaje</p>
+                </div>
+                <button onclick="buySkin('sniper', 150)">Comprar (150 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Médico</h4>
+                    <p>Uniforme médico con cruz roja</p>
+                </div>
+                <button onclick="buySkin('medic', 120)">Comprar (120 monedas)</button>
+            </div>
+        </div>
+        
+        <div class="shop-content" id="upgrades-tab">
+            <h3>Mejoras de Personaje</h3>
+            <div class="shop-item">
+                <div>
+                    <h4>Salud +25</h4>
+                    <p>Aumenta la salud máxima en 25 puntos</p>
+                </div>
+                <button onclick="buyUpgrade('health', 80)">Comprar (80 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Regeneración</h4>
+                    <p>Regenera salud lentamente con el tiempo</p>
+                </div>
+                <button onclick="buyUpgrade('regen', 120)">Comprar (120 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Recarga Rápida</h4>
+                    <p>Reduce el tiempo de recarga de armas</p>
+                </div>
+                <button onclick="buyUpgrade('reload', 100)">Comprar (100 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Velocidad de Caminar</h4>
+                    <p>Aumenta la velocidad de movimiento</p>
+                </div>
+                <button onclick="buyUpgrade('speed', 90)">Comprar (90 monedas)</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="menu-button" onclick="hideShop()">Cerrar Tienda</button>
+        </div>
+    </div>
+
+    <!-- Arsenal -->
+    <div id="arsenal">
+        <h2 style="text-align: center; margin-bottom: 20px;">ARSENAL</h2>
+        
+        <div class="arsenal-layout">
+            <!-- Panel izquierdo: Vista del personaje -->
+            <div class="character-preview">
+                <h3>VISTA ACTUAL</h3>
+                <div class="character-display" id="characterDisplay">
+                    <!-- Aquí se mostrará la skin actual -->
+                    <div class="character-model" id="currentCharacterModel">
+                        <div class="player-preview"></div>
+                        <div class="weapon-preview" id="weaponPreview"></div>
+                    </div>
+                </div>
+                <div class="current-info">
+                    <h4>EQUIPAMIENTO ACTUAL</h4>
+                    <p><strong>Skin:</strong> <span id="currentSkinName">Soldado Básico</span></p>
+                    <p><strong>Arma Principal:</strong> <span id="currentWeaponName">COLT M1911A1</span></p>
+                    <p><strong>Arma Melee:</strong> <span id="currentMeleeName">Ninguna</span></p>
+                </div>
+            </div>
+            
+            <!-- Panel derecho: Tabs de contenido -->
+            <div class="arsenal-content">
+                <div class="arsenal-tabs">
+                    <div class="arsenal-tab active" data-tab="actual">ACTUAL</div>
+                    <div class="arsenal-tab" data-tab="armas">ARMAS</div>
+                    <div class="arsenal-tab" data-tab="melee">ARMAS MELEE</div>
+                    <div class="arsenal-tab" data-tab="legendarias">LEGENDARIAS</div>
+                    <div class="arsenal-tab" data-tab="skins">SKINS</div>
+                </div>
+                
+                <div class="arsenal-tab-content active" id="arsenal-actual">
+                    <h3>EQUIPAMIENTO ACTUAL</h3>
+                    <div class="current-equipment">
+                        <div class="equipment-item">
+                            <h4>Skin Equipada</h4>
+                            <div class="equipment-display" id="currentSkinDisplay">
+                                Soldado Básico
+                            </div>
+                            <button onclick="changeTab('skins')">Cambiar Skin</button>
+                        </div>
+                        <div class="equipment-item">
+                            <h4>Arma Principal</h4>
+                            <div class="equipment-display" id="currentWeaponDisplay">
+                                COLT M1911A1
+                            </div>
+                            <button onclick="changeTab('armas')">Cambiar Arma</button>
+                        </div>
+                        <div class="equipment-item">
+                            <h4>Arma Melee</h4>
+                            <div class="equipment-display" id="currentMeleeDisplay">
+                                Ninguna
+                            </div>
+                            <button onclick="changeTab('melee')">Cambiar Melee</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="arsenal-tab-content" id="arsenal-armas">
+                    <h3>ARMAS DESBLOQUEADAS</h3>
+                    <div class="weapons-grid" id="unlockedWeaponsGrid">
+                        <!-- Las armas desbloqueadas se cargarán aquí -->
+                    </div>
+                </div>
+                
+                <div class="arsenal-tab-content" id="arsenal-melee">
+                    <h3>ARMAS MELEE DESBLOQUEADAS</h3>
+                    <div class="weapons-grid" id="unlockedMeleeGrid">
+                        <!-- Las armas melee desbloqueadas se cargarán aquí -->
+                    </div>
+                </div>
+                
+                <div class="arsenal-tab-content" id="arsenal-legendarias">
+                    <h3>ARMAS LEGENDARIAS DESBLOQUEADAS</h3>
+                    <div class="weapons-grid" id="unlockedLegendaryGrid">
+                        <!-- Las armas legendarias desbloqueadas se cargarán aquí -->
+                    </div>
+                </div>
+                
+                <div class="arsenal-tab-content" id="arsenal-skins">
+                    <h3>SKINS DESBLOQUEADAS</h3>
+                    <div class="skins-grid" id="unlockedSkinsGrid">
+                        <!-- Las skins desbloqueadas se cargarán aquí -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="menu-button" onclick="hideArsenal()">Cerrar Arsenal</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuración del juego
+        const NUM_ENEMIES = 5;
+        let warMode = false;
+        let animationId;
+        let gameTime = 0;
+        let gameRunning = false;
+        let gamePaused = false;
+        let playerCoins = 0;
+        let playerData = {
+            coins: 0,
+            weapons: ['colt'],
+            meleeWeapons: [],
+            legendaryWeapons: [],
+            skins: ['soldier'],
+            upgrades: []
+        };
+        
+        // Variables para el equipamiento actual
+        let currentSkin = 'soldier';
+        let currentWeapon = 'colt';
+        let currentMelee = '';
+        
+        // Elementos DOM
+        const map = document.getElementById('map');
+        const gameArea = document.getElementById('gameArea');
+        const btnPeace = document.getElementById('btnPeace');
+        const btnWar = document.getElementById('btnWar');
+        const playersCount = document.getElementById('playersCount');
+        const enemiesCount = document.getElementById('enemiesCount');
+        const coinsCount = document.getElementById('coinsCount');
+        const healthBarFill = document.getElementById('healthBarFill');
+        const shieldBarFill = document.getElementById('shieldBarFill');
+        const weaponEmojis = document.querySelectorAll('.weapon-emoji');
+        const ggMessage = document.getElementById('ggMessage');
+        const resetButton = document.getElementById('resetButton');
+        const weaponListP1 = document.getElementById('weaponListP1');
+        const weaponListP2 = document.getElementById('weaponListP2');
+        const shop = document.getElementById('shop');
+        const weaponMenu = document.getElementById('weaponMenu');
+        const miniMap = document.getElementById('miniMap');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const reloadIndicator = document.getElementById('reloadIndicator');
+        const reloadBar = document.getElementById('reloadBar');
+        
+        // Arrays de juego
+        let players = [];
+        let enemies = [];
+        let bulletsPlayer = [];
+        let bulletsEnemy = [];
+        let enemiesToRemove = [];
+        let bulletsPlayerToRemove = [];
+        let bulletsEnemyToRemove = [];
+        let coins = [];
+        let medkits = [];
+        let trees = [];
+        let mapElements = [];
+        
+        // Sistema de armas
+        let weapons = [
+            {name:'COLT M1911A1', speed:7, damage:20, type:'pistol'},
+            {name:'USP', speed:8, damage:18, type:'pistol'},
+            {name:'KAR98K', speed:10, damage:40, type:'sniper'},
+            {name:'UZI', speed:12, damage:10, type:'smg'},
+            {name:'AUG A1', speed:9, damage:15, type:'rifle'},
+            // Nuevas armas
+            {name:'SPAS 12', speed:8, damage:35, type:'shotgun'},
+            {name:'M416', speed:11, damage:25, type:'rifle'},
+            {name:'DP-28', speed:9, damage:30, type:'lmg'},
+            {name:'Q18C', speed:13, damage:15, type:'pistol'},
+            {name:'D-EAGLE 50', speed:6, damage:45, type:'pistol'},
+            {name:'MP4', speed:12, damage:18, type:'smg'},
+            {name:'M4', speed:10, damage:28, type:'rifle'},
+            {name:'AWS', speed:14, damage:50, type:'sniper'},
+            // Armas legendarias
+            {name:'KEVENSTKA', speed:15, damage:80, type:'sniper', reloadTime: 2.5, ammo: 5, maxAmmo: 5},
+            {name:'α', speed:0, damage:50, type:'melee', range: 60, cooldown: 1.5}
+        ];
+        
+        // Armas melee
+        let meleeWeapons = [
+            {name:'AXE', damage:30, speed:1.0, range: 40},
+            {name:'BATTLEAXE', damage:40, speed:0.8, range: 45},
+            {name:'SPEAR', damage:25, speed:1.2, range: 50},
+            {name:'KUNIA', damage:20, speed:1.5, range: 30},
+            {name:'SWORD', damage:35, speed:1.1, range: 45},
+            {name:'BROADSWORD', damage:45, speed:0.9, range: 50},
+            {name:'KATANA', damage:40, speed:1.3, range: 45},
+            {name:'TOMAHAWK', damage:25, speed:1.4, range: 35},
+            {name:'KARAMBIT', damage:20, speed:1.6, range: 30},
+            {name:'FOLDING KNIFE', damage:15, speed:1.8, range: 25},
+            {name:'HAMMER', damage:35, speed:0.7, range: 40},
+            {name:'SICKLE', damage:25, speed:1.2, range: 35},
+            {name:'MACE', damage:40, speed:0.8, range: 40},
+            {name:'SCIMITAR', damage:35, speed:1.1, range: 45},
+            {name:'WHIP', damage:15, speed:1.7, range: 55},
+            {name:'GLAIVE', damage:45, speed:0.9, range: 55},
+            {name:'SHIELD WITH GUN', damage:20, speed:1.0, range: 40}
+        ];
+        
+        let currentWeaponP1 = weapons[0];
+        let currentWeaponP2 = weapons[1];
+        let keysPressed = {};
+        
+        // Variables para el estado de las nuevas armas
+        let kevenstkaReloading = false;
+        let kevenstkaAmmo = 5;
+        let alphaReady = true;
+        let grenadeReady = true;
+        
+        // Nombres para personajes
+        const names = [
+            'Sgt. Miller', 'Cpt. Rodriguez', 'Lt. Chen', 'Maj. Schmidt',
+            'Col. Santos', 'Sgt. Kowalski', 'Lt. Yamamoto', 'Cpt. Ivanov',
+            'Maj. Larsen', 'Col. Fitzgerald'
+        ];
+        
+        // Clase de personaje
+        class Character {
+            constructor(id, name, isPlayer = false) {
+                this.id = id;
+                this.name = name;
+                this.x = Math.random() * (window.innerWidth - 50);
+                this.y = Math.random() * (window.innerHeight - 60);
+                this.speed = isPlayer ? 8 : 2;
+                this.health = isPlayer ? 100 : 50;
+                this.maxHealth = isPlayer ? 100 : 50;
+                this.shield = isPlayer ? 100 : 0;
+                this.maxShield = isPlayer ? 100 : 0;
+                this.alive = true;
+                this.isPlayer = isPlayer;
+                this.element = null;
+                this.healthBar = null;
+                this.shieldBar = null;
+                this.direction = {x:0, y:-1};
+                this.shadow = null;
+                this.lastShieldRegen = Date.now();
+                
+                if (isPlayer) {
+                    this.createPlayerElement();
+                } else {
+                    this.dirX = (Math.random() > 0.5 ? 1 : -1);
+                    this.dirY = (Math.random() > 0.5 ? 1 : -1);
+                    this.createEnemyElement();
+                }
+            }
+            
+            createPlayerElement() {
+                const character = document.createElement('div');
+                character.className = 'player';
+                character.id = `player-${this.id}`;
+                character.style.left = `${this.x}px`;
+                character.style.top = `${this.y}px`;
+                character.textContent = 'P' + (this.id + 1);
+                
+                // Crear barra de escudo
+                const shieldBar = document.createElement('div');
+                shieldBar.className = 'shield-bar';
+                const shieldFill = document.createElement('div');
+                shieldFill.className = 'shield-fill';
+                shieldFill.style.width = '100%';
+                shieldBar.appendChild(shieldFill);
+                character.appendChild(shieldBar);
+                
+                // Crear barra de salud
+                const healthBar = document.createElement('div');
+                healthBar.className = 'health-bar';
+                const healthFill = document.createElement('div');
+                healthFill.className = 'health-fill';
+                healthFill.style.width = '100%';
+                healthBar.appendChild(healthFill);
+                character.appendChild(healthBar);
+                
+                // Crear sombra
+                const shadow = document.createElement('div');
+                shadow.className = 'shadow';
+                shadow.style.width = '50px';
+                shadow.style.height = '20px';
+                shadow.style.left = `${this.x - 5}px`;
+                shadow.style.top = `${this.y + 35}px`;
+                gameArea.appendChild(shadow);
+                this.shadow = shadow;
+                
+                gameArea.appendChild(character);
+                this.element = character;
+                this.healthBar = healthFill;
+                this.shieldBar = shieldFill;
+            }
+            
+            createEnemyElement() {
+                const character = document.createElement('div');
+                character.className = 'enemy';
+                character.id = `enemy-${this.id}`;
+                character.style.left = `${this.x}px`;
+                character.style.top = `${this.y}px`;
+                character.textContent = 'E' + (this.id + 1);
+                
+                const healthBar = document.createElement('div');
+                healthBar.className = 'health-bar';
+                const healthFill = document.createElement('div');
+                healthFill.className = 'health-fill';
+                healthFill.style.width = '100%';
+                healthBar.appendChild(healthFill);
+                character.appendChild(healthBar);
+                
+                // Crear sombra
+                const shadow = document.createElement('div');
+                shadow.className = 'shadow';
+                shadow.style.width = '50px';
+                shadow.style.height = '20px';
+                shadow.style.left = `${this.x - 5}px`;
+                shadow.style.top = `${this.y + 35}px`;
+                gameArea.appendChild(shadow);
+                this.shadow = shadow;
+                
+                gameArea.appendChild(character);
+                this.element = character;
+                this.healthBar = healthFill;
+            }
+            
+            update() {
+                if (!this.alive) return;
+                
+                // Regenerar escudo cada 15 segundos (solo para jugadores)
+                if (this.isPlayer && this.shield < this.maxShield) {
+                    const now = Date.now();
+                    if (now - this.lastShieldRegen > 15000) {
+                        this.shield = Math.min(this.maxShield, this.shield + 25);
+                        this.shieldBar.style.width = `${(this.shield / this.maxShield) * 100}%`;
+                        this.lastShieldRegen = now;
+                        updateStatusMap();
+                    }
+                }
+                
+                if (this.isPlayer) {
+                    // Los jugadores se controlan con teclado
+                    this.element.style.left = `${this.x}px`;
+                    this.element.style.top = `${this.y}px`;
+                    this.shadow.style.left = `${this.x - 5}px`;
+                    this.shadow.style.top = `${this.y + 35}px`;
+                    this.healthBar.style.width = `${(this.health / this.maxHealth) * 100}%`;
+                    this.shieldBar.style.width = `${(this.shield / this.maxShield) * 100}%`;
+                    
+                    // Actualizar clases de estado de salud
+                    this.element.classList.remove('damaged', 'critical');
+                    if (this.health < 30) {
+                        this.element.classList.add('critical');
+                    } else if (this.health < 70) {
+                        this.element.classList.add('damaged');
+                    }
+                } else {
+                    // Movimiento de enemigos
+                    if (warMode) {
+                        this.x += this.dirX * this.speed;
+                        this.y += this.dirY * this.speed;
+                        
+                        if (this.x <= 0 || this.x >= window.innerWidth - 40) this.dirX *= -1;
+                        if (this.y <= 0 || this.y >= window.innerHeight - 40) this.dirY *= -1;
+                        
+                        this.element.style.left = `${this.x}px`;
+                        this.element.style.top = `${this.y}px`;
+                        this.shadow.style.left = `${this.x - 5}px`;
+                        this.shadow.style.top = `${this.y + 35}px`;
+                        this.healthBar.style.width = `${(this.health / this.maxHealth) * 100}%`;
+                        
+                        // Actualizar clases de estado de salud
+                        this.element.classList.remove('damaged', 'critical');
+                        if (this.health < 15) {
+                            this.element.classList.add('critical');
+                        } else if (this.health < 25) {
+                            this.element.classList.add('damaged');
+                        }
+                        
+                        // Disparar en modo guerra
+                        if (Math.random() < 0.02 && players.length > 0) {
+                            let target = players[Math.floor(Math.random() * players.length)];
+                            this.shootAt(target);
+                        }
+                    }
+                }
+            }
+            
+            shootAt(target) {
+                if (!this.alive || !target.alive) return;
+                
+                const bullet = document.createElement('div');
+                bullet.className = 'bullet-enemy';
+                bullet.style.left = `${this.x + 20}px`;
+                bullet.style.top = `${this.y + 20}px`;
+                gameArea.appendChild(bullet);
+                
+                let dx = target.x - this.x;
+                let dy = target.y - this.y;
+                let length = Math.sqrt(dx * dx + dy * dy);
+                dx /= length;
+                dy /= length;
+                
+                bulletsEnemy.push({
+                    el: bullet, 
+                    x: this.x + 20, 
+                    y: this.y + 20, 
+                    dx: dx, 
+                    dy: dy, 
+                    speed: 6, 
+                    damage: 10
+                });
+            }
+            
+            takeDamage(amount) {
+                if (!this.alive) return;
+                
+                // Primero dañar el escudo si existe
+                if (this.shield > 0) {
+                    this.shield = Math.max(0, this.shield - amount);
+                    this.shieldBar.style.width = `${(this.shield / this.maxShield) * 100}%`;
+                    updateStatusMap();
+                    
+                    // Si el escudo absorbió todo el daño, no dañar la salud
+                    if (this.shield > 0) return;
+                }
+                
+                // Dañar la salud si no hay escudo o se agotó
+                this.health -= amount;
+                this.healthBar.style.width = `${(this.health / this.maxHealth) * 100}%`;
+                
+                if (this.health <= 0) {
+                    this.health = 0;
+                    this.alive = false;
+                    this.element.classList.add('dead');
+                    
+                    // Crear explosión al morir
+                    this.createExplosion(this.x, this.y);
+                    
+                    if (!this.isPlayer) {
+                        // Marcar enemigo para eliminación
+                        enemiesToRemove.push(this);
+                        
+                        // Generar monedas al matar enemigo
+                        createCoins(this.x, this.y);
+                    }
+                }
+            }
+            
+            createExplosion(x, y) {
+                const explosion = document.createElement('div');
+                explosion.className = 'explosion';
+                explosion.style.left = `${x - 30}px`;
+                explosion.style.top = `${y - 30}px`;
+                gameArea.appendChild(explosion);
+                
+                setTimeout(() => {
+                    if (explosion.parentNode) {
+                        gameArea.removeChild(explosion);
+                    }
+                }, 600);
+            }
+        }
+        
+        // Crear monedas al matar enemigo
+        function createCoins(x, y) {
+            const numCoins = Math.floor(Math.random() * 3) + 1; // 1-3 monedas
+            
+            for (let i = 0; i < numCoins; i++) {
+                const coin = document.createElement('div');
+                coin.className = 'coin';
+                coin.style.left = `${x + Math.random() * 40 - 20}px`;
+                coin.style.top = `${y + Math.random() * 40 - 20}px`;
+                gameArea.appendChild(coin);
+                
+                const coinValue = Math.floor(Math.random() * 86) + 15; // 15-100 monedas
+                
+                coins.push({
+                    el: coin,
+                    x: parseFloat(coin.style.left),
+                    y: parseFloat(coin.style.top),
+                    value: coinValue
+                });
+            }
+        }
+        
+        // Crear medkits en edificios
+        function createMedkits() {
+            const buildingPositions = [
+                { left: 100, top: 100, width: 80, height: 60 },
+                { left: window.innerWidth - 180, top: 100, width: 70, height: 50 },
+                { left: 100, top: window.innerHeight - 160, width: 90, height: 70 },
+                { left: window.innerWidth - 190, top: window.innerHeight - 140, width: 75, height: 55 },
+                { left: window.innerWidth/2 - 100, top: window.innerHeight/2 - 75, width: 100, height: 80 }
+            ];
+            
+            buildingPositions.forEach((pos, index) => {
+                const medkit = document.createElement('div');
+                medkit.className = 'medkit';
+                medkit.style.left = `${pos.left + pos.width/2 - 15}px`;
+                medkit.style.top = `${pos.top + pos.height/2 - 12.5}px`;
+                gameArea.appendChild(medkit);
+                
+                medkits.push({
+                    el: medkit,
+                    x: parseFloat(medkit.style.left),
+                    y: parseFloat(medkit.style.top)
+                });
+            });
+        }
+        
+        // Crear mapa complejo
+        function createComplexMap() {
+            // Terreno base
+            createTerrain();
+            
+            // Río serpenteante
+            createRiver();
+            
+            // Montañas
+            createMountains();
+            
+            // Edificios
+            createBuildings();
+            
+            // Árboles en grupos (bosques)
+            createForests();
+            
+            // Rocas
+            createRocks();
+            
+            // Puente sobre el río
+            createBridge();
+            
+            // Crear medkits
+            createMedkits();
+            
+            // Crear mapa minimizado
+            createMiniMap();
+        }
+        
+        function createTerrain() {
+            // Áreas de hierba
+            for (let i = 0; i < 8; i++) {
+                const grass = document.createElement('div');
+                grass.className = 'terrain grass';
+                grass.style.width = `${200 + Math.random() * 150}px`;
+                grass.style.height = `${150 + Math.random() * 100}px`;
+                grass.style.left = `${Math.random() * (window.innerWidth - 300)}px`;
+                grass.style.top = `${Math.random() * (window.innerHeight - 250)}px`;
+                map.appendChild(grass);
+                
+                mapElements.push({
+                    type: 'grass',
+                    x: parseFloat(grass.style.left),
+                    y: parseFloat(grass.style.top),
+                    width: parseFloat(grass.style.width),
+                    height: parseFloat(grass.style.height)
+                });
+            }
+            
+            // Áreas de arena
+            for (let i = 0; i < 4; i++) {
+                const sand = document.createElement('div');
+                sand.className = 'terrain sand';
+                sand.style.width = `${150 + Math.random() * 100}px`;
+                sand.style.height = `${100 + Math.random() * 80}px`;
+                sand.style.left = `${Math.random() * (window.innerWidth - 200)}px`;
+                sand.style.top = `${Math.random() * (window.innerHeight - 180)}px`;
+                map.appendChild(sand);
+                
+                mapElements.push({
+                    type: 'sand',
+                    x: parseFloat(sand.style.left),
+                    y: parseFloat(sand.style.top),
+                    width: parseFloat(sand.style.width),
+                    height: parseFloat(sand.style.height)
+                });
+            }
+        }
+        
+        function createRiver() {
+            const river = document.createElement('div');
+            river.className = 'river';
+            river.style.width = '40px';
+            river.style.height = '600px';
+            river.style.left = '300px';
+            river.style.top = '100px';
+            river.style.transform = 'rotate(25deg)';
+            map.appendChild(river);
+            
+            mapElements.push({
+                type: 'river',
+                x: 300,
+                y: 100,
+                width: 40,
+                height: 600,
+                angle: 25
+            });
+        }
+        
+        function createMountains() {
+            for (let i = 0; i < 5; i++) {
+                const mountain = document.createElement('div');
+                mountain.className = 'mountain';
+                mountain.style.width = `${120 + Math.random() * 80}px`;
+                mountain.style.height = `${80 + Math.random() * 60}px`;
+                mountain.style.left = `${Math.random() * (window.innerWidth - 200)}px`;
+                mountain.style.top = `${Math.random() * (window.innerHeight - 150)}px`;
+                map.appendChild(mountain);
+                
+                mapElements.push({
+                    type: 'mountain',
+                    x: parseFloat(mountain.style.left),
+                    y: parseFloat(mountain.style.top),
+                    width: parseFloat(mountain.style.width),
+                    height: parseFloat(mountain.style.height)
+                });
+            }
+        }
+        
+        function createBuildings() {
+            const buildingPositions = [
+                { left: 100, top: 100, width: 80, height: 60 },
+                { left: window.innerWidth - 180, top: 100, width: 70, height: 50 },
+                { left: 100, top: window.innerHeight - 160, width: 90, height: 70 },
+                { left: window.innerWidth - 190, top: window.innerHeight - 140, width: 75, height: 55 },
+                { left: window.innerWidth/2 - 100, top: window.innerHeight/2 - 75, width: 100, height: 80 }
+            ];
+            
+            buildingPositions.forEach((pos, index) => {
+                const building = document.createElement('div');
+                building.className = 'building map-element';
+                building.style.width = `${pos.width}px`;
+                building.style.height = `${pos.height}px`;
+                building.style.left = `${pos.left}px`;
+                building.style.top = `${pos.top}px`;
+                
+                // Añadir ventanas
+                for (let i = 0; i < 4; i++) {
+                    const window = document.createElement('div');
+                    window.className = 'window';
+                    window.style.left = `${15 + (i % 2) * 30}px`;
+                    window.style.top = `${15 + Math.floor(i / 2) * 20}px`;
+                    building.appendChild(window);
+                }
+                
+                // Añadir puerta
+                const door = document.createElement('div');
+                door.className = 'door';
+                door.style.left = `${pos.width/2 - 6}px`;
+                building.appendChild(door);
+                
+                map.appendChild(building);
+                
+                mapElements.push({
+                    type: 'building',
+                    x: pos.left,
+                    y: pos.top,
+                    width: pos.width,
+                    height: pos.height
+                });
+            });
+        }
+        
+        function createForests() {
+            // Tres áreas boscosas
+            const forestAreas = [
+                { left: 50, top: 200, count: 8 },
+                { left: 500, top: 50, count: 6 },
+                { left: 200, top: 400, count: 7 }
+            ];
+            
+            forestAreas.forEach(area => {
+                for (let i = 0; i < area.count; i++) {
+                    const tree = document.createElement('div');
+                    tree.className = 'tree map-element';
+                    tree.style.left = `${area.left + Math.random() * 120}px`;
+                    tree.style.top = `${area.top + Math.random() * 100}px`;
+                    
+                    tree.innerHTML = `
+                        <div class="tree-trunk"></div>
+                        <div class="tree-top"></div>
+                    `;
+                    
+                    map.appendChild(tree);
+                    
+                    // Guardar información del árbol para detección de colisiones
+                    trees.push({
+                        el: tree,
+                        x: parseFloat(tree.style.left),
+                        y: parseFloat(tree.style.top),
+                        width: 50,
+                        height: 80
+                    });
+                    
+                    mapElements.push({
+                        type: 'tree',
+                        x: parseFloat(tree.style.left),
+                        y: parseFloat(tree.style.top),
+                        width: 50,
+                        height: 80
+                    });
+                }
+            });
+        }
+        
+        function createRocks() {
+            for (let i = 0; i < 12; i++) {
+                const rock = document.createElement('div');
+                rock.className = 'rock map-element';
+                rock.style.left = `${Math.random() * (window.innerWidth - 50)}px`;
+                rock.style.top = `${Math.random() * (window.innerHeight - 40)}px`;
+                map.appendChild(rock);
+                
+                mapElements.push({
+                    type: 'rock',
+                    x: parseFloat(rock.style.left),
+                    y: parseFloat(rock.style.top),
+                    width: 35,
+                    height: 25
+                });
+            }
+        }
+        
+        function createBridge() {
+            const bridge = document.createElement('div');
+            bridge.className = 'bridge map-element';
+            bridge.style.width = '120px';
+            bridge.style.height = '25px';
+            bridge.style.left = '280px';
+            bridge.style.top = '350px';
+            bridge.style.transform = 'rotate(25deg)';
+            map.appendChild(bridge);
+            
+            mapElements.push({
+                type: 'bridge',
+                x: 280,
+                y: 350,
+                width: 120,
+                height: 25,
+                angle: 25
+            });
+        }
+        
+        // Crear mapa minimizado
+        function createMiniMap() {
+            // Limpiar mapa minimizado
+            miniMap.innerHTML = '';
+            
+            // Escala para convertir coordenadas del juego al mapa minimizado
+            const scaleX = miniMap.offsetWidth / window.innerWidth;
+            const scaleY = miniMap.offsetHeight / window.innerHeight;
+            
+            // Dibujar elementos del mapa
+            mapElements.forEach(element => {
+                const miniElement = document.createElement('div');
+                miniElement.className = 'mini-map-element';
+                miniElement.style.left = `${element.x * scaleX}px`;
+                miniElement.style.top = `${element.y * scaleY}px`;
+                miniElement.style.width = `${element.width * scaleX}px`;
+                miniElement.style.height = `${element.height * scaleY}px`;
+                
+                // Colores según el tipo de elemento
+                switch(element.type) {
+                    case 'grass':
+                        miniElement.style.background = 'rgba(46, 125, 50, 0.5)';
+                        break;
+                    case 'sand':
+                        miniElement.style.background = 'rgba(188, 170, 164, 0.5)';
+                        break;
+                    case 'river':
+                        miniElement.style.background = 'rgba(74, 144, 226, 0.5)';
+                        break;
+                    case 'mountain':
+                        miniElement.style.background = 'rgba(84, 110, 122, 0.5)';
+                        break;
+                    case 'building':
+                        miniElement.style.background = 'rgba(109, 76, 65, 0.5)';
+                        break;
+                    case 'tree':
+                        miniElement.style.background = 'rgba(27, 94, 32, 0.5)';
+                        break;
+                    case 'rock':
+                        miniElement.style.background = 'rgba(97, 97, 97, 0.5)';
+                        break;
+                    case 'bridge':
+                        miniElement.style.background = 'rgba(109, 76, 65, 0.5)';
+                        break;
+                }
+                
+                miniMap.appendChild(miniElement);
+            });
+        }
+        
+        // Actualizar mapa minimizado
+        function updateMiniMap() {
+            // Escala para convertir coordenadas del juego al mapa minimizado
+            const scaleX = miniMap.offsetWidth / window.innerWidth;
+            const scaleY = miniMap.offsetHeight / window.innerHeight;
+            
+            // Eliminar marcadores anteriores
+            document.querySelectorAll('.mini-map-player, .mini-map-enemy').forEach(el => {
+                el.remove();
+            });
+            
+            // Dibujar jugadores
+            players.forEach(player => {
+                if (player.alive) {
+                    const marker = document.createElement('div');
+                    marker.className = 'mini-map-player';
+                    marker.style.left = `${player.x * scaleX}px`;
+                    marker.style.top = `${player.y * scaleY}px`;
+                    miniMap.appendChild(marker);
+                }
+            });
+            
+            // Dibujar enemigos
+            enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    const marker = document.createElement('div');
+                    marker.className = 'mini-map-enemy';
+                    marker.style.left = `${enemy.x * scaleX}px`;
+                    marker.style.top = `${enemy.y * scaleY}px`;
+                    miniMap.appendChild(marker);
+                }
+            });
+        }
+        
+        // Sistema de armas
+        function randomName() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            return 'Player_' + chars[Math.floor(Math.random()*chars.length)] + Math.floor(Math.random()*100);
+        }
+
+        function renderWeapons() {
+            weaponListP1.innerHTML = '';
+            weaponListP2.innerHTML = '';
+            weapons.forEach((w)=>{
+                const div1 = document.createElement('div');
+                div1.className = 'weapon';
+                if (w === currentWeaponP1) div1.classList.add('active');
+                div1.innerHTML = `<span>${w.name}</span>`;
+                div1.onclick = ()=>{ currentWeaponP1 = w; renderWeapons(); };
+                weaponListP1.appendChild(div1);
+
+                const div2 = document.createElement('div');
+                div2.className = 'weapon';
+                if (w === currentWeaponP2) div2.classList.add('active');
+                div2.innerHTML = `<span>${w.name}</span>`;
+                div2.onclick = ()=>{ currentWeaponP2 = w; renderWeapons(); };
+                weaponListP2.appendChild(div2);
+            });
+        }
+
+        function createPlayer(x, y, name, id) {
+            return new Character(players.length, name, true);
+        }
+
+        function createEnemy(x, y) {
+            const name = names[Math.floor(Math.random() * names.length)];
+            return new Character(enemies.length, name, false);
+        }
+
+        document.addEventListener('keydown', e => {
+            keysPressed[e.key] = true;
+            
+            if (e.key === 'Escape') {
+                togglePause();
+                return;
+            }
+            
+            if (!gameRunning || gamePaused) return;
+
+            // Abrir tienda con T
+            if (e.key === 't' || e.key === 'T') {
+                showShop();
+            }
+
+            // Recargar Kevenstka con R
+            if ((e.key === 'r' || e.key === 'R') && currentWeaponP1.name === 'KEVENSTKA') {
+                reloadKevenstka();
+            }
+
+            players.forEach(p => {
+                if (p.id === 0) { // Jugador 1
+                    if (e.key === ' ') shootPlayer(p, currentWeaponP1);
+                    if (e.key === 'z') changeWeapon('p1');
+                }
+                if (p.id === 1) { // Jugador 2
+                    if (e.key === 'Enter') shootPlayer(p, currentWeaponP2);
+                    if (e.key === '\\') changeWeapon('p2');
+                }
+            });
+        });
+
+        document.addEventListener('keyup', e => {
+            delete keysPressed[e.key];
+        });
+
+        function changeWeapon(player) {
+            if (player === 'p1') {
+                let index = weapons.indexOf(currentWeaponP1);
+                currentWeaponP1 = weapons[(index + 1) % weapons.length];
+            } else {
+                let index = weapons.indexOf(currentWeaponP2);
+                currentWeaponP2 = weapons[(index + 1) % weapons.length];
+            }
+            
+            // Sincronizar con el Arsenal
+            syncArsenalWithGame();
+            
+            // Resetear estados específicos de armas
+            if (currentWeaponP1.name !== 'KEVENSTKA') {
+                reloadIndicator.style.display = 'none';
+            }
+            
+            renderWeapons();
+            updateStatusMap();
+        }
+
+        // Función para disparar con Kevenstka
+        function shootKevenstka(player) {
+            if (!warMode || !player.alive || kevenstkaReloading) return;
+            
+            if (kevenstkaAmmo <= 0) {
+                reloadKevenstka();
+                return;
+            }
+            
+            kevenstkaAmmo--;
+            
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet-kevenstka';
+            bullet.style.left = (player.x + 20) + 'px';
+            bullet.style.top = (player.y + 20) + 'px';
+            gameArea.appendChild(bullet);
+            
+            bulletsPlayer.push({
+                el: bullet, 
+                x: player.x + 20, 
+                y: player.y + 20, 
+                dx: player.direction.x, 
+                dy: player.direction.y, 
+                speed: 15, 
+                damage: 80,
+                weaponType: 'kevenstka'
+            });
+            
+            // Actualizar estadísticas de munición
+            updateStatusMap();
+        }
+
+        // Función para recargar Kevenstka
+        function reloadKevenstka() {
+            if (kevenstkaReloading || kevenstkaAmmo === 5) return;
+            
+            kevenstkaReloading = true;
+            
+            reloadIndicator.style.display = 'block';
+            reloadBar.style.width = '0%';
+            
+            let width = 0;
+            const interval = setInterval(() => {
+                width += 1;
+                reloadBar.style.width = `${width}%`;
+                
+                if (width >= 100) {
+                    clearInterval(interval);
+                    kevenstkaAmmo = 5;
+                    kevenstkaReloading = false;
+                    reloadIndicator.style.display = 'none';
+                    updateStatusMap();
+                }
+            }, 25); // 2.5 segundos para recargar completa
+        }
+
+        // Función para usar el arma α
+        function useAlpha(player) {
+            if (!warMode || !player.alive || !alphaReady) return;
+            
+            alphaReady = false;
+            
+            // Crear los tres cortes simultáneos
+            for (let i = 0; i < 3; i++) {
+                const slash = document.createElement('div');
+                slash.className = `alpha-slash slash-${i+1}`;
+                slash.style.left = (player.x - 20) + 'px';
+                slash.style.top = (player.y - 20) + 'px';
+                gameArea.appendChild(slash);
+                
+                // Eliminar el efecto después de la animación
+                setTimeout(() => {
+                    if (slash.parentNode) {
+                        gameArea.removeChild(slash);
+                    }
+                }, 400);
+            }
+            
+            // Aplicar daño a enemigos en el rango
+            const range = 60; // Radio de efecto
+            enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    const distance = Math.sqrt(
+                        Math.pow(player.x - enemy.x, 2) + 
+                        Math.pow(player.y - enemy.y, 2)
+                    );
+                    
+                    if (distance <= range) {
+                        enemy.takeDamage(50);
+                    }
+                }
+            });
+            
+            // Cooldown del arma
+            setTimeout(() => {
+                alphaReady = true;
+            }, 1500);
+        }
+
+        // Función para lanzar granada
+        function throwGrenade(player) {
+            if (!warMode || !player.alive || !grenadeReady) return;
+            
+            grenadeReady = false;
+            
+            // Crear explosión de granada
+            const explosion = document.createElement('div');
+            explosion.className = 'grenade-explosion';
+            explosion.style.left = (player.x - 60) + 'px';
+            explosion.style.top = (player.y - 60) + 'px';
+            gameArea.appendChild(explosion);
+            
+            // Eliminar el efecto después de la animación
+            setTimeout(() => {
+                if (explosion.parentNode) {
+                    gameArea.removeChild(explosion);
+                }
+            }, 800);
+            
+            // Aplicar daño a enemigos en el rango
+            const range = 120; // Radio de efecto de la granada
+            enemies.forEach(enemy => {
+                if (enemy.alive) {
+                    const distance = Math.sqrt(
+                        Math.pow(player.x - enemy.x, 2) + 
+                        Math.pow(player.y - enemy.y, 2)
+                    );
+                    
+                    if (distance <= range) {
+                        // Más daño cuanto más cerca esté el enemigo
+                        const damage = Math.max(30, 80 - (distance / range) * 50);
+                        enemy.takeDamage(damage);
+                    }
+                }
+            });
+            
+            // Cooldown de la granada
+            setTimeout(() => {
+                grenadeReady = true;
+            }, 3000);
+        }
+
+        // Actualizar función de disparo para incluir las nuevas armas
+        function shootPlayer(player, weapon) {
+            if (!warMode || !player.alive) return;
+            
+            if (weapon.name === 'KEVENSTKA') {
+                shootKevenstka(player);
+                return;
+            }
+            
+            if (weapon.name === 'α') {
+                useAlpha(player);
+                return;
+            }
+            
+            // Disparo normal para otras armas
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet-player';
+            bullet.style.left = (player.x + 20) + 'px';
+            bullet.style.top = (player.y + 20) + 'px';
+            gameArea.appendChild(bullet);
+            
+            bulletsPlayer.push({
+                el: bullet, 
+                x: player.x + 20, 
+                y: player.y + 20, 
+                dx: player.direction.x, 
+                dy: player.direction.y, 
+                speed: weapon.speed, 
+                damage: weapon.damage
+            });
+        }
+
+        // Actualizar mapa de estado
+        function updateStatusMap() {
+            const alivePlayers = players.filter(p => p.alive).length;
+            const aliveEnemies = enemies.filter(e => e.alive).length;
+            
+            playersCount.textContent = `Jugadores: ${alivePlayers}/${players.length}`;
+            enemiesCount.textContent = `Enemigos: ${aliveEnemies}/${enemies.length}`;
+            coinsCount.textContent = `Monedas: ${playerCoins}`;
+            
+            // Actualizar barras de salud y escudo
+            if (players.length > 0) {
+                const player = players[0];
+                healthBarFill.style.width = `${(player.health / player.maxHealth) * 100}%`;
+                shieldBarFill.style.width = `${(player.shield / player.maxShield) * 100}%`;
+            }
+            
+            // Actualizar emojis de armas activas
+            weaponEmojis.forEach(emoji => {
+                emoji.classList.remove('active');
+            });
+            
+            if (currentWeaponP1.name === 'KEVENSTKA') {
+                document.querySelector('.weapon-emoji[data-weapon="pistol"]').classList.add('active');
+            } else if (currentWeaponP1.name === 'α') {
+                document.querySelector('.weapon-emoji[data-weapon="knife"]').classList.add('active');
+            } else {
+                document.querySelector('.weapon-emoji[data-weapon="pistol"]').classList.add('active');
+            }
+        }
+        
+        // Función para limpiar elementos marcados para eliminación
+        function cleanupMarkedElements() {
+            // Eliminar enemigos marcados
+            for (let i = enemiesToRemove.length - 1; i >= 0; i--) {
+                const enemy = enemiesToRemove[i];
+                const index = enemies.indexOf(enemy);
+                if (index !== -1) {
+                    if (enemy.element && enemy.element.parentNode) {
+                        gameArea.removeChild(enemy.element);
+                    }
+                    if (enemy.shadow && enemy.shadow.parentNode) {
+                        gameArea.removeChild(enemy.shadow);
+                    }
+                    enemies.splice(index, 1);
+                }
+            }
+            enemiesToRemove = [];
+            
+            // Eliminar balas de jugador marcadas
+            for (let i = bulletsPlayerToRemove.length - 1; i >= 0; i--) {
+                const bullet = bulletsPlayerToRemove[i];
+                const index = bulletsPlayer.indexOf(bullet);
+                if (index !== -1) {
+                    if (bullet.el && bullet.el.parentNode) {
+                        gameArea.removeChild(bullet.el);
+                    }
+                    bulletsPlayer.splice(index, 1);
+                }
+            }
+            bulletsPlayerToRemove = [];
+            
+            // Eliminar balas de enemigo marcadas
+            for (let i = bulletsEnemyToRemove.length - 1; i >= 0; i--) {
+                const bullet = bulletsEnemyToRemove[i];
+                const index = bulletsEnemy.indexOf(bullet);
+                if (index !== -1) {
+                    if (bullet.el && bullet.el.parentNode) {
+                        gameArea.removeChild(bullet.el);
+                    }
+                    bulletsEnemy.splice(index, 1);
+                }
+            }
+            bulletsEnemyToRemove = [];
+        }
+        
+        // Verificar colisión con árboles
+        function isCollidingWithTree(x, y) {
+            for (const tree of trees) {
+                if (x >= tree.x && x <= tree.x + tree.width &&
+                    y >= tree.y && y <= tree.y + tree.height) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Pausar/reanudar juego
+        function togglePause() {
+            gamePaused = !gamePaused;
+            if (gamePaused) {
+                pauseScreen.style.display = 'flex';
+                cancelAnimationFrame(animationId);
+            } else {
+                pauseScreen.style.display = 'none';
+                if (gameRunning) {
+                    animate();
+                }
+            }
+        }
+        
+        // Animación principal
+        function animate() {
+            if (gamePaused) return;
+            
+            // Actualizar jugadores
+            players.forEach(player => {
+                if (player.alive) {
+                    let newX = player.x;
+                    let newY = player.y;
+                    
+                    if (player.id === 0) { // Jugador 1
+                        if (keysPressed['w']){ newY -= player.speed; player.direction = {x:0, y:-1}; }
+                        if (keysPressed['s']){ newY += player.speed; player.direction = {x:0, y:1}; }
+                        if (keysPressed['a']){ newX -= player.speed; player.direction = {x:-1, y:0}; }
+                        if (keysPressed['d']){ newX += player.speed; player.direction = {x:1, y:0}; }
+                    }
+                    if (player.id === 1) { // Jugador 2
+                        if (keysPressed['ArrowUp']){ newY -= player.speed; player.direction = {x:0, y:-1}; }
+                        if (keysPressed['ArrowDown']){ newY += player.speed; player.direction = {x:0, y:1}; }
+                        if (keysPressed['ArrowLeft']){ newX -= player.speed; player.direction = {x:-1, y:0}; }
+                        if (keysPressed['ArrowRight']){ newX += player.speed; player.direction = {x:1, y:0}; }
+                    }
+                    
+                    // Verificar colisión con árboles
+                    if (!isCollidingWithTree(newX, newY) && 
+                        !isCollidingWithTree(newX + 40, newY) && 
+                        !isCollidingWithTree(newX, newY + 40) && 
+                        !isCollidingWithTree(newX + 40, newY + 40)) {
+                        player.x = Math.max(0, Math.min(window.innerWidth - 40, newX));
+                        player.y = Math.max(0, Math.min(window.innerHeight - 40, newY));
+                    }
+                }
+                
+                player.update();
+                
+                // Verificar recolección de monedas
+                for (let i = coins.length - 1; i >= 0; i--) {
+                    const coin = coins[i];
+                    if (Math.abs(player.x - coin.x) < 30 && Math.abs(player.y - coin.y) < 30) {
+                        playerCoins += coin.value;
+                        playerData.coins = playerCoins;
+                        savePlayerData();
+                        gameArea.removeChild(coin.el);
+                        coins.splice(i, 1);
+                    }
+                }
+                
+                // Verificar recolección de medkits
+                for (let i = medkits.length - 1; i >= 0; i--) {
+                    const medkit = medkits[i];
+                    if (Math.abs(player.x - medkit.x) < 30 && Math.abs(player.y - medkit.y) < 30) {
+                        player.health = player.maxHealth;
+                        gameArea.removeChild(medkit.el);
+                        medkits.splice(i, 1);
+                    }
+                }
+            });
+            
+            // Actualizar enemigos
+            enemies.forEach(enemy => {
+                enemy.update();
+            });
+            
+            // Balas jugador - iterar hacia atrás para evitar problemas al eliminar
+            for (let i = bulletsPlayer.length - 1; i >= 0; i--) {
+                const b = bulletsPlayer[i];
+                b.x += b.dx * b.speed;
+                b.y += b.dy * b.speed;
+                b.el.style.left = b.x + 'px';
+                b.el.style.top = b.y + 'px';
+                
+                if (b.x < 0 || b.x > window.innerWidth || b.y < 0 || b.y > window.innerHeight) {
+                    bulletsPlayerToRemove.push(b);
+                    continue;
+                }
+                
+                // Verificar colisión con árboles
+                if (isCollidingWithTree(b.x, b.y)) {
+                    bulletsPlayerToRemove.push(b);
+                    continue;
+                }
+                
+                let hit = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const en = enemies[j];
+                    if (en.alive && Math.abs(b.x - en.x) < 25 && Math.abs(b.y - en.y) < 25) {
+                        en.takeDamage(b.damage);
+                        bulletsPlayerToRemove.push(b);
+                        hit = true;
+                        break;
+                    }
+                }
+                
+                if (hit) continue;
+            }
+            
+            // Balas enemigo - iterar hacia atrás para evitar problemas al eliminar
+            for (let i = bulletsEnemy.length - 1; i >= 0; i--) {
+                const b = bulletsEnemy[i];
+                b.x += b.dx * b.speed;
+                b.y += b.dy * b.speed;
+                b.el.style.left = b.x + 'px';
+                b.el.style.top = b.y + 'px';
+                
+                if (b.x < 0 || b.x > window.innerWidth || b.y < 0 || b.y > window.innerHeight) {
+                    bulletsEnemyToRemove.push(b);
+                    continue;
+                }
+                
+                // Verificar colisión con árboles
+                if (isCollidingWithTree(b.x, b.y)) {
+                    bulletsEnemyToRemove.push(b);
+                    continue;
+                }
+                
+                let hit = false;
+                for (let j = players.length - 1; j >= 0; j--) {
+                    const p = players[j];
+                    if (p.alive && Math.abs(b.x - p.x) < 25 && Math.abs(b.y - p.y) < 25) {
+                        p.takeDamage(b.damage);
+                        bulletsEnemyToRemove.push(b);
+                        hit = true;
+                        break;
+                    }
+                }
+                
+                if (hit) continue;
+            }
+            
+            // Limpiar elementos marcados para eliminación
+            cleanupMarkedElements();
+            
+            // Actualizar mapa minimizado
+            updateMiniMap();
+            
+            // Actualizar mapa de estado
+            updateStatusMap();
+            
+            // Verificar fin del juego
+            if (enemies.length === 0) {
+                gameRunning = false;
+                ggMessage.textContent = '¡VICTORIA!';
+                ggMessage.style.color = '#0f0';
+                ggMessage.style.display = 'block';
+                resetButton.style.display = 'block';
+            }
+            
+            // Verificar si todos los jugadores están muertos
+            if (players.length > 0 && players.every(p => !p.alive)) {
+                gameRunning = false;
+                ggMessage.textContent = 'GAME OVER';
+                ggMessage.style.color = '#f00';
+                ggMessage.style.display = 'block';
+                resetButton.style.display = 'block';
+            }
+            
+            gameTime += 1/60; // Incrementar tiempo de juego
+            
+            if (gameRunning) {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+        
+        // Cambiar a modo paz
+        function setPeaceMode() {
+            warMode = false;
+            btnPeace.disabled = true;
+            btnWar.disabled = false;
+        }
+        
+        // Cambiar a modo guerra
+        function setWarMode() {
+            warMode = true;
+            btnPeace.disabled = false;
+            btnWar.disabled = true;
+        }
+        
+        // Mostrar tienda
+        function showShop() {
+            shop.style.display = 'block';
+            gamePaused = true;
+            cancelAnimationFrame(animationId);
+            
+            // Actualizar estado de las armas en la tienda
+            updateShopItems();
+        }
+        
+        // Ocultar tienda
+        function hideShop() {
+            shop.style.display = 'none';
+            gamePaused = false;
+            if (gameRunning) {
+                animate();
+            }
+        }
+        
+        // Actualizar elementos de la tienda
+        function updateShopItems() {
+    // Actualizar armas normales
+    playerData.weapons.forEach(weapon => {
+        const shopItem = document.getElementById(`shop-${weapon}`);
+        if (shopItem) {
+            shopItem.classList.add('owned');
+            const button = shopItem.querySelector('button');
+            button.textContent = 'COMPRADO';
+            button.disabled = true;
+            button.onclick = null; // Remover la función de compra
+        }
+    });
+    
+    // Actualizar armas melee
+    playerData.meleeWeapons.forEach(weapon => {
+        const shopItem = document.getElementById(`shop-${weapon}`);
+        if (shopItem) {
+            shopItem.classList.add('owned');
+            const button = shopItem.querySelector('button');
+            button.textContent = 'COMPRADO';
+            button.disabled = true;
+            button.onclick = null; // Remover la función de compra
+        }
+    });
+    
+    // Actualizar armas legendarias
+    playerData.legendaryWeapons.forEach(weapon => {
+        const shopItem = document.getElementById(`shop-${weapon}`);
+        if (shopItem) {
+            shopItem.classList.add('owned');
+            const button = shopItem.querySelector('button');
+            button.textContent = 'COMPRADO';
+            button.disabled = true;
+            button.onclick = null; // Remover la función de compra
+        }
+    });
+    
+    // Actualizar skins - CORRECCIÓN ESPECÍFICA PARA SKINS
+    playerData.skins.forEach(skin => {
+        // Buscar todos los botones de skins y verificar cuál corresponde
+        const skinButtons = document.querySelectorAll('#skins-tab .shop-item button');
+        skinButtons.forEach(button => {
+            const onclickAttr = button.getAttribute('onclick');
+            if (onclickAttr && onclickAttr.includes(`'${skin}'`)) {
+                const shopItem = button.closest('.shop-item');
+                shopItem.classList.add('owned');
+                button.textContent = 'COMPRADO';
+                button.disabled = true;
+                button.onclick = null; // Remover la función de compra
+            }
+        });
+    });
+}
+        
+        // Función para actualizar monedas en el menú principal
+        function updateMenuCoins() {
+            const menuCoinsCount = document.getElementById('menuCoinsCount');
+            if (menuCoinsCount) {
+                menuCoinsCount.textContent = playerCoins;
+            }
+        }
+
+        // Guardar datos del jugador en localStorage
+        function savePlayerData() {
+            localStorage.setItem('warPeacePlayerData', JSON.stringify(playerData));
+            updateMenuCoins(); // ACTUALIZAR MENÚ AL GUARDAR
+        }
+        
+        // Cargar datos del jugador desde localStorage
+        function loadPlayerData() {
+            const savedData = localStorage.getItem('warPeacePlayerData');
+            if (savedData) {
+                playerData = JSON.parse(savedData);
+                playerCoins = playerData.coins;
+                loadCurrentEquipment();
+            }
+            updateMenuCoins(); // ACTUALIZAR MENÚ AL CARGAR
+        }
+        
+        // Funciones para el Arsenal
+        function showArsenal() {
+            document.getElementById('arsenal').style.display = 'block';
+            loadArsenalData();
+            updateCharacterDisplay();
+        }
+
+        function hideArsenal() {
+            document.getElementById('arsenal').style.display = 'none';
+            gamePaused = true;
+            cancelAnimationFrame(animationId);
+            loadArsenalData();
+            updateCharacterDisplay();
+        }
+
+
+        function changeTab(tabName) {
+            // Remover clase active de todas las pestañas
+            document.querySelectorAll('.arsenal-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remover clase active de todos los contenidos
+            document.querySelectorAll('.arsenal-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Activar pestaña seleccionada
+            document.querySelector(`.arsenal-tab[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(`arsenal-${tabName}`).classList.add('active');
+        }
+
+        function loadArsenalData() {
+            loadUnlockedWeapons();
+            loadUnlockedMelee();
+            loadUnlockedLegendary();
+            loadUnlockedSkins();
+            updateCurrentEquipment();
+            
+            // Actualizar también la vista del personaje
+            updateCharacterDisplay();
+        }
+
+        function loadUnlockedWeapons() {
+            const grid = document.getElementById('unlockedWeaponsGrid');
+            grid.innerHTML = '';
+            
+            playerData.weapons.forEach(weapon => {
+                const weaponConfig = weaponsConfig[weapon] || { name: weapon.toUpperCase(), type: 'pistol' };
+                const isEquipped = weapon === currentWeapon;
+                const item = document.createElement('div');
+                item.className = `arsenal-item ${isEquipped ? 'equipped' : ''}`;
+                item.innerHTML = `
+                    <div class="item-icon">🔫</div>
+                    <div class="item-name">${weaponConfig.name}</div>
+                    <div class="item-type">${weaponConfig.type.toUpperCase()}</div>
+                    ${isEquipped ? 
+                        '<div class="equipped-text">EQUIPADO</div>' : 
+                        `<button class="equip-button" onclick="equipWeapon('${weapon}')">EQUIPAR</button>`
+                    }
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function loadUnlockedMelee() {
+            const grid = document.getElementById('unlockedMeleeGrid');
+            grid.innerHTML = '';
+            
+            playerData.meleeWeapons.forEach(weapon => {
+                const isEquipped = weapon === currentMelee;
+                const item = document.createElement('div');
+                item.className = `arsenal-item ${isEquipped ? 'equipped' : ''}`;
+                item.innerHTML = `
+                    <div class="item-icon">🔪</div>
+                    <div class="item-name">${weapon.toUpperCase()}</div>
+                    <div class="item-type">MELEE</div>
+                    ${isEquipped ? 
+                        '<div class="equipped-text">EQUIPADO</div>' : 
+                        `<button class="equip-button" onclick="equipMelee('${weapon}')">EQUIPAR</button>`
+                    }
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function loadUnlockedLegendary() {
+            const grid = document.getElementById('unlockedLegendaryGrid');
+            grid.innerHTML = '';
+            
+            playerData.legendaryWeapons.forEach(weapon => {
+                const isEquipped = weapon === currentWeapon || (weapon === 'alpha' && currentMelee === 'alpha');
+                const item = document.createElement('div');
+                item.className = `arsenal-item ${isEquipped ? 'equipped' : ''}`;
+                const icon = weapon === 'kevenstka' ? '🔫' : '⚔️';
+                const name = weapon === 'kevenstka' ? 'KEVENSTKA' : 'ARMA α';
+                item.innerHTML = `
+                    <div class="item-icon">${icon}</div>
+                    <div class="item-name">${name}</div>
+                    <div class="item-type">LEGENDARIA</div>
+                    ${isEquipped ? 
+                        '<div class="equipped-text">EQUIPADO</div>' : 
+                        `<button class="equip-button" onclick="equipWeapon('${weapon}')">EQUIPAR</button>`
+                    }
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function loadUnlockedSkins() {
+            const grid = document.getElementById('unlockedSkinsGrid');
+            grid.innerHTML = '';
+            
+            playerData.skins.forEach(skin => {
+                const skinNames = {
+                    'soldier': 'Soldado Básico',
+                    'commando': 'Comando',
+                    'sniper': 'Francotirador',
+                    'medic': 'Médico'
+                };
+                
+                const isEquipped = skin === currentSkin;
+                const item = document.createElement('div');
+                item.className = `arsenal-item ${isEquipped ? 'equipped' : ''}`;
+                item.innerHTML = `
+                    <div class="item-icon">👤</div>
+                    <div class="item-name">${skinNames[skin]}</div>
+                    <div class="item-type">SKIN</div>
+                    ${isEquipped ? 
+                        '<div class="equipped-text">EQUIPADO</div>' : 
+                        `<button class="equip-button" onclick="equipSkin('${skin}')">EQUIPAR</button>`
+                    }
+                `;
+                grid.appendChild(item);
+            });
+        }
+
+        function updateCurrentEquipment() {
+            const skinNames = {
+                'soldier': 'Soldado Básico',
+                'commando': 'Comando',
+                'sniper': 'Francotirador',
+                'medic': 'Médico'
+            };
+            
+            // Obtener nombres de armas desde la configuración
+            const weaponName = weaponsConfig[currentWeapon]?.name || 'COLT M1911A1';
+            const meleeName = currentMelee ? currentMelee.toUpperCase() : 'Ninguna';
+            
+            document.getElementById('currentSkinName').textContent = skinNames[currentSkin] || 'Soldado Básico';
+            document.getElementById('currentWeaponName').textContent = weaponName;
+            document.getElementById('currentMeleeName').textContent = meleeName;
+            
+            document.getElementById('currentSkinDisplay').textContent = skinNames[currentSkin] || 'Soldado Básico';
+            document.getElementById('currentWeaponDisplay').textContent = weaponName;
+            document.getElementById('currentMeleeDisplay').textContent = meleeName;
+        }
+
+        function updateCharacterDisplay() {
+            const characterModel = document.getElementById('currentCharacterModel');
+            const weaponPreview = document.getElementById('weaponPreview');
+            
+            // Actualizar skin
+            characterModel.className = 'character-model';
+            characterModel.classList.add(`skin-${currentSkin}`);
+            
+            // Actualizar arma en la vista
+            let weaponIcon = '🔫'; // Por defecto
+            
+            if (currentWeapon === 'kevenstka') {
+                weaponIcon = '🔫';
+            } else if (currentWeapon === 'alpha') {
+                weaponIcon = '⚔️';
+            } else if (currentMelee) {
+                weaponIcon = '🔪';
+            }
+            
+            weaponPreview.textContent = weaponIcon;
+        }
+
+        function equipWeapon(weapon) {
+            currentWeapon = weapon;
+            
+            // Sincronizar con el sistema de armas del juego
+            const weaponConfig = weaponsConfig[weapon];
+            if (weaponConfig) {
+                // Buscar el arma en la lista de armas disponibles
+                const gameWeapon = weapons.find(w => w.name === weaponConfig.name);
+                if (gameWeapon && players.length > 0) {
+                    currentWeaponP1 = gameWeapon;
+                    renderWeapons();
+                }
+            }
+            
+            saveCurrentEquipment();
+            loadArsenalData();
+            updateCharacterDisplay();
+        }
+
+        function equipMelee(melee) {
+            currentMelee = melee;
+            
+            // Sincronizar con el sistema de armas del juego si es un arma legendaria melee
+            if (melee === 'alpha') {
+                const gameWeapon = weapons.find(w => w.name === 'α');
+                if (gameWeapon && players.length > 0) {
+                    currentWeaponP1 = gameWeapon;
+                    renderWeapons();
+                }
+            }
+            
+            saveCurrentEquipment();
+            loadArsenalData();
+            updateCharacterDisplay();
+        }
+
+        function equipSkin(skin) {
+            currentSkin = skin;
+            saveCurrentEquipment();
+            loadArsenalData();
+            updateCharacterDisplay();
+        }
+
+        function saveCurrentEquipment() {
+            playerData.currentSkin = currentSkin;
+            playerData.currentWeapon = currentWeapon;
+            playerData.currentMelee = currentMelee;
+            savePlayerData();
+        }
+
+        function loadCurrentEquipment() {
+            if (playerData.currentSkin) currentSkin = playerData.currentSkin;
+            if (playerData.currentWeapon) currentWeapon = playerData.currentWeapon;
+            if (playerData.currentMelee) currentMelee = playerData.currentMelee;
+        }
+
+        function syncArsenalWithGame() {
+            // Sincronizar arma principal desde el juego al Arsenal
+            const currentGameWeapon = currentWeaponP1.name;
+            
+            // Buscar en weaponsConfig cuál arma coincide
+            for (const [key, weapon] of Object.entries(weaponsConfig)) {
+                if (weapon.name === currentGameWeapon) {
+                    currentWeapon = key;
+                    break;
+                }
+            }
+            
+            // Si es un arma legendaria
+            if (currentGameWeapon === 'KEVENSTKA') {
+                currentWeapon = 'kevenstka';
+            } else if (currentGameWeapon === 'α') {
+                currentWeapon = 'alpha';
+                currentMelee = 'alpha';
+            }
+            
+            saveCurrentEquipment();
+        }
+
+// Comprar arma - FUNCIÓN CORREGIDA
+function buyWeapon(weaponType, cost) {
+    if (playerCoins >= cost) {
+        playerCoins -= cost;
+        playerData.coins = playerCoins;
+        
+        // Determinar el tipo de arma y añadirla a la categoría correspondiente
+        if (weaponType === 'kevenstka' || weaponType === 'alpha') {
+            if (!playerData.legendaryWeapons.includes(weaponType)) {
+                playerData.legendaryWeapons.push(weaponType);
+                
+                // Añadir el arma a la lista de armas disponibles
+                if (weaponType === 'kevenstka') {
+                    if (!weapons.some(w => w.name === 'KEVENSTKA')) {
+                        weapons.push({name:'KEVENSTKA', speed:15, damage:80, type:'sniper', reloadTime: 2.5, ammo: 5, maxAmmo: 5});
+                    }
+                } else if (weaponType === 'alpha') {
+                    if (!weapons.some(w => w.name === 'α')) {
+                        weapons.push({name:'α', speed:0, damage:50, type:'melee', range: 60, cooldown: 1.5});
+                    }
+                }
+            }
+        } else if (meleeWeapons.some(w => w.name.toLowerCase() === weaponType.toUpperCase())) {
+            // Es un arma melee
+            if (!playerData.meleeWeapons.includes(weaponType)) {
+                playerData.meleeWeapons.push(weaponType);
+            }
+        } else {
+            // Es un arma normal
+            if (!playerData.weapons.includes(weaponType)) {
+                playerData.weapons.push(weaponType);
+                
+                // Añadir el arma a la lista de armas disponibles
+                const newWeapon = weaponsConfig[weaponType];
+                if (newWeapon && !weapons.some(w => w.name === newWeapon.name)) {
+                    weapons.push(newWeapon);
+                }
+            }
+        }
+        
+        savePlayerData();
+        alert(`¡Has comprado ${weaponType} por ${cost} monedas!`);
+        updateShopItems();
+    } else {
+        alert(`No tienes suficientes monedas. Necesitas ${cost} monedas.`);
+    }
+}        
+        
+        // Configuración de las nuevas armas
+        const weaponsConfig = {
+												'luger': {name:'LUGER P08', speed:6, damage:15, type:'pistol'},
+												'stg44': {name:'STG 44', speed:8, damage:25, type:'rifle'},
+												'panzerfaust': {name:'PANZERFAUST', speed:5, damage:60, type:'launcher'},
+												'kar98k': {name:'KAR98K', speed:10, damage:40, type:'sniper'},
+												'mp40': {name:'MP40', speed:9, damage:18, type:'smg'},
+												'mg42': {name:'MG42', speed:7, damage:30, type:'lmg'},
+												'mosin': {name:'MOSIN NAGANT', speed:9, damage:35, type:'sniper'},
+												'ppsh': {name:'PPSH-41', speed:11, damage:16, type:'smg'},
+												'colt': {name:'COLT M1911', speed:7, damage:20, type:'pistol'},
+												'flamethrower': {name:'M2 FLAMETHROWER', speed:4, damage:35, type:'special'},
+												'browning': {name:'BROWNING M1918', speed:8, damage:28, type:'rifle'},
+												'bazooka': {name:'M1 BAZOOKA', speed:5, damage:55, type:'launcher'},
+												'spas12': {name:'SPAS 12', speed:8, damage:35, type:'shotgun'},
+												'm416': {name:'M416', speed:11, damage:25, type:'rifle'},
+												'dp28': {name:'DP-28', speed:9, damage:30, type:'lmg'},
+												'q18c': {name:'Q18C', speed:13, damage:15, type:'pistol'},
+												'deagle50': {name:'D-EAGLE 50', speed:6, damage:45, type:'pistol'},
+												'mp4': {name:'MP4', speed:12, damage:18, type:'smg'},
+												'm4': {name:'M4', speed:10, damage:28, type:'rifle'},
+												'aws': {name:'AWS', speed:14, damage:50, type:'sniper'}
+        };
+        
+        // Comprar skin
+        function buySkin(skinType, cost) {
+           if (playerCoins >= cost) {
+               playerCoins -= cost;
+               playerData.coins = playerCoins;
+               if (!playerData.skins.includes(skinType)) {
+                   playerData.skins.push(skinType);
+               }
+               savePlayerData();
+               alert(`¡Has comprado el skin ${skinType} por ${cost} monedas!`);
+               updateShopItems(); // ACTUALIZAR INMEDIATAMENTE LA TIENDA
+           } else {
+               alert(`No tienes suficientes monedas. Necesitas ${cost} monedas.`);
+           }
+       }
+               
+        // Comprar mejora
+        function buyUpgrade(upgradeType, cost) {
+            if (playerCoins >= cost) {
+                playerCoins -= cost;
+                playerData.coins = playerCoins;
+                if (!playerData.upgrades.includes(upgradeType)) {
+                    playerData.upgrades.push(upgradeType);
+                    
+                    // Aplicar mejora
+                    players.forEach(player => {
+                        switch(upgradeType) {
+                            case 'health':
+                                player.maxHealth += 25;
+                                player.health = player.maxHealth;
+                                break;
+                            case 'speed':
+                                player.speed += 1;
+                                break;
+                            // Otras mejoras se pueden implementar aquí
+                        }
+                    });
+                }
+                savePlayerData();
+                alert(`¡Has comprado la mejora ${upgradeType} por ${cost} monedas!`);
+            } else {
+                alert(`No tienes suficientes monedas. Necesitas ${cost} monedas.`);
+            }
+        }
+        
+        // Reiniciar juego
+        function resetGame() {
+            document.querySelector('.controls').style.display = 'none';
+            location.reload();
+        }
+        
+        // Inicializar estados de armas al comenzar el juego
+        function initWeaponStates() {
+            kevenstkaReloading = false;
+            kevenstkaAmmo = 5;
+            alphaReady = true;
+            grenadeReady = true;
+        }
+        
+        // Inicialización del juego
+        function startGame(mode) {
+            document.getElementById('menu').style.display = 'none';
+            document.querySelector('.controls').style.display = 'flex';
+            gameArea.style.display = 'block';
+            gameRunning = true;
+            players = [];
+            enemies = [];
+            bulletsPlayer = [];
+            bulletsEnemy = [];
+            enemiesToRemove = [];
+            bulletsPlayerToRemove = [];
+            bulletsEnemyToRemove = [];
+            coins = [];
+            medkits = [];
+            trees = [];
+            gameTime = 0;
+            
+            // Cargar datos del jugador
+            loadPlayerData();
+            playerCoins = playerData.coins;
+            
+            // Limpiar área de juego
+            gameArea.innerHTML = '';
+            ggMessage.style.display = 'none';
+            resetButton.style.display = 'none';
+            
+            // Inicializar estados de armas
+            initWeaponStates();
+            
+            renderWeapons();
+
+            if (mode === 'single') {
+                players.push(createPlayer(100, 100, randomName(), 'player1'));
+            } else {
+                players.push(createPlayer(100, 100, randomName(), 'player1'));
+                players.push(createPlayer(window.innerWidth - 140, window.innerHeight - 140, randomName(), 'player2'));
+            }
+
+            for (let i = 0; i < NUM_ENEMIES; i++) {
+                enemies.push(createEnemy(
+                    Math.random() * (window.innerWidth - 50), 
+                    Math.random() * (window.innerHeight - 60)
+                ));
+            }
+
+            // Iniciar en modo paz
+            setPeaceMode();
+            
+            // Actualizar mapa de estado
+            updateStatusMap();
+            
+            // Iniciar animación
+            animate();
+        }
+        
+        // Inicialización
+        function init() {
+            createComplexMap();
+            
+            // Cargar datos del jugador
+            loadPlayerData();
+            playerCoins = playerData.coins;
+            
+            // Event listeners
+            btnPeace.addEventListener('click', setPeaceMode);
+            btnWar.addEventListener('click', setWarMode);
+            resetButton.addEventListener('click', resetGame);
+            
+            // Event listeners para pestañas de la tienda
+            document.querySelectorAll('.shop-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remover clase active de todas las pestañas
+                    document.querySelectorAll('.shop-tab').forEach(t => {
+                        t.classList.remove('active');
+                    });
+                    
+                    // Añadir clase active a la pestaña clickeada
+                    this.classList.add('active');
+                    
+                    // Ocultar todo el contenido
+                    document.querySelectorAll('.shop-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Mostrar el contenido correspondiente
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // Event listeners para pestañas del Arsenal
+            document.querySelectorAll('.arsenal-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    changeTab(tabName);
+                });
+            });
+            
+            // Event listeners para menú de armas
+            document.querySelectorAll('.weapon-menu-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    // Remover clase active de todos los items
+                    document.querySelectorAll('.weapon-menu-item').forEach(i => {
+                        i.classList.remove('active');
+                    });
+                    
+                    // Añadir clase active al item clickeado
+                    this.classList.add('active');
+                    
+                    // Cambiar arma según la selección
+                    const weaponType = this.getAttribute('data-weapon');
+                    // Implementar cambio de arma
+                });
+            });
+            
+            // Event listeners para emojis de armas
+            weaponEmojis.forEach(emoji => {
+                emoji.addEventListener('click', function() {
+                    const weaponType = this.getAttribute('data-weapon');
+                    
+                    // Remover clase active de todos los emojis
+                    weaponEmojis.forEach(e => {
+                        e.classList.remove('active');
+                    });
+                    
+                    // Añadir clase active al emoji clickeado
+                    this.classList.add('active');
+                    
+                    // Cambiar arma según la selección
+                    if (weaponType === 'pistol') {
+                        currentWeaponP1 = weapons[0];
+                    } else if (weaponType === 'knife') {
+                        // Buscar un arma melee
+                        const meleeWeapon = weapons.find(w => w.type === 'melee');
+                        if (meleeWeapon) {
+                            currentWeaponP1 = meleeWeapon;
+                        }
+                    } else if (weaponType === 'grenade') {
+                        throwGrenade(players[0]);
+                    }
+                    
+                    renderWeapons();
+                });
+            });
+        }
+        
+        // Ajustar al cambiar tamaño de ventana
+        window.addEventListener('resize', () => {
+            // En una implementación real, aquí se ajustarían las posiciones
+            // Para esta demo, simplemente recargamos
+            location.reload();
+        });
+        
+        // Iniciar la aplicación
+        init();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1798 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fusión: Guerra y Paz con Sistema de Armas</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #0a0a0a;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #gameContainer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, #1a3a1a 0%, #0a2a0a 100%),
+                linear-gradient(135deg, #0a2a0a 0%, #1a3a1a 100%);
+            z-index: 1;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 25px;
+            z-index: 1000;
+        }
+        
+        button {
+            padding: 18px 35px;
+            font-size: 1.3rem;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.4s;
+            font-weight: bold;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #btnPeace {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32, #1B5E20);
+            color: white;
+            border: 2px solid #81C784;
+        }
+        
+        #btnWar {
+            background: linear-gradient(135deg, #f44336, #c62828, #b71c1c);
+            color: white;
+            border: 2px solid #ef5350;
+        }
+        
+        button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: 0.5s;
+        }
+        
+        button:hover::before {
+            left: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+        }
+        
+        button:active {
+            transform: translateY(2px);
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+            min-width: 200px;
+        }
+        
+        .mode-indicator {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+            padding: 8px;
+            border-radius: 8px;
+        }
+        
+        .stats {
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        
+        /* Estilos del sistema de armas */
+        #sidebarP1, #sidebarP2 {
+            width: 220px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px;
+            font-size: 24px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #sidebarP1 {
+            left: 0;
+            border-right: 2px solid #444;
+        }
+
+        #sidebarP2 {
+            right: 0;
+            border-left: 2px solid #444;
+        }
+
+        .weapon {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 5px;
+            transition: all 0.3s;
+            background: rgba(50, 50, 50, 0.5);
+        }
+
+        .weapon:hover {
+            background: rgba(70, 70, 70, 0.7);
+        }
+
+        .weapon.active {
+            background: rgba(30, 80, 150, 0.7);
+            border: 1px solid #4a90e2;
+        }
+
+        .shortcuts {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ccc;
+        }
+
+        #gameArea {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .player, .enemy {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 12px;
+            text-shadow: 1px 1px 2px black;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            transition: all 0.3s;
+        }
+        
+        .player { 
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            border: 2px solid #81C784;
+        }
+        
+        .enemy { 
+            background: linear-gradient(135deg, #f44336, #c62828);
+            border: 2px solid #ef5350;
+        }
+
+        .bullet-player {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #ffeb3b, #ffc107);
+            border-radius: 50%;
+            z-index: 90;
+            box-shadow: 0 0 12px #ff9800;
+            filter: blur(0.5px);
+        }
+
+        .bullet-enemy {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: radial-gradient(circle, #ff5722, #d84315);
+            border-radius: 50%;
+            z-index: 90;
+            box-shadow: 0 0 12px #ff5722;
+            filter: blur(0.5px);
+        }
+
+        .health-bar {
+            position: absolute;
+            width: 40px;
+            height: 6px;
+            background: #333;
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid #555;
+            top: -15px;
+            left: 0;
+        }
+
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.3s;
+            box-shadow: 0 0 5px #4CAF50;
+        }
+
+        .damaged .health-fill {
+            background: linear-gradient(90deg, #ff9800, #ff5722);
+        }
+
+        .critical .health-fill {
+            background: linear-gradient(90deg, #f44336, #d32f2f);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .dead {
+            opacity: 0.7;
+            filter: grayscale(100%) brightness(0.5);
+            transform: scale(0.8);
+        }
+
+        #ggMessage {
+            display: none;
+            font-size: 48px;
+            color: #0f0;
+            text-align: center;
+            margin-top: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            text-shadow: 0 0 10px rgba(0,255,0,0.7);
+            background: rgba(0,0,0,0.8);
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        #resetButton {
+            display: none;
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, #4a90e2, #2d5a9e);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        #resetButton:hover {
+            transform: translate(-50%, -50%) scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        #menu {
+            text-align: center;
+            margin-bottom: 20px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        
+        .menu-button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            margin: 10px;
+            background: linear-gradient(135deg, #4a90e2, #2d5a9e);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .menu-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        /* Elementos del mapa */
+        .map-element {
+            position: absolute;
+            z-index: 2;
+            filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.4));
+        }
+        
+        .tree {
+            width: 50px;
+            height: 80px;
+            z-index: 5;
+        }
+        
+        .tree-trunk {
+            position: absolute;
+            width: 16px;
+            height: 40px;
+            background: linear-gradient(90deg, #5d4037, #4e342e);
+            bottom: 0;
+            left: 17px;
+            border-radius: 4px;
+            border: 1px solid #3e2723;
+        }
+        
+        .tree-top {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(ellipse at center, #2e7d32, #1b5e20);
+            border-radius: 50%;
+            top: 0;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .rock {
+            width: 35px;
+            height: 25px;
+            background: linear-gradient(135deg, #757575, #616161);
+            border-radius: 8px;
+            border: 2px solid #424242;
+        }
+        
+        .building {
+            background: linear-gradient(135deg, #8d6e63, #6d4c41);
+            border-radius: 8px;
+            box-shadow: 
+                0 0 15px rgba(0, 0, 0, 0.4),
+                inset 0 0 10px rgba(255,255,255,0.1);
+            border: 2px solid #5d4037;
+            overflow: hidden;
+            z-index: 5;
+        }
+        
+        .window {
+            position: absolute;
+            width: 8px;
+            height: 12px;
+            background: #81d4fa;
+            border-radius: 2px;
+            border: 1px solid #4fc3f7;
+        }
+        
+        .door {
+            position: absolute;
+            width: 12px;
+            height: 20px;
+            background: #5d4037;
+            bottom: 0;
+            border-radius: 2px 2px 0 0;
+            border: 1px solid #3e2723;
+        }
+        
+        .river {
+            position: absolute;
+            background: linear-gradient(90deg, #4a90e2, #2d5a9e, #4a90e2);
+            border-radius: 10px;
+            box-shadow: 
+                inset 0 0 20px rgba(0,0,0,0.3),
+                0 0 10px rgba(74, 144, 226, 0.5);
+        }
+        
+        .bridge {
+            position: absolute;
+            background: linear-gradient(45deg, #8d6e63, #6d4c41);
+            border: 2px solid #5d4037;
+            border-radius: 4px;
+            z-index: 3;
+        }
+        
+        .mountain {
+            position: absolute;
+            background: linear-gradient(135deg, #78909c, #546e7a);
+            border-radius: 15px 15px 0 0;
+            box-shadow: 0 0 15px rgba(0,0,0,0.3);
+        }
+        
+        .terrain {
+            position: absolute;
+            z-index: 1;
+        }
+        
+        .grass {
+            background: radial-gradient(ellipse at center, #2e7d32, #1b5e20);
+            border-radius: 5px;
+        }
+        
+        .sand {
+            background: linear-gradient(135deg, #d7ccc8, #bcaaa4);
+            border-radius: 3px;
+        }
+
+        .explosion {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: radial-gradient(circle, #ff9800, #ff5722, #d84315, transparent);
+            border-radius: 50%;
+            z-index: 200;
+            animation: explode 0.6s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        /* Monedas */
+        .coin {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle at 30% 30%, #ffd700, #ff9800);
+            border-radius: 50%;
+            z-index: 50;
+            box-shadow: 0 0 10px #ffd700;
+            animation: coin-spin 2s linear infinite;
+        }
+
+        @keyframes coin-spin {
+            0% { transform: rotateY(0deg); }
+            100% { transform: rotateY(360deg); }
+        }
+
+        /* Medkits */
+        .medkit {
+            position: absolute;
+            width: 25px;
+            height: 20px;
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            border-radius: 4px;
+            z-index: 50;
+            box-shadow: 0 0 8px rgba(244, 67, 54, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            color: white;
+            font-weight: bold;
+        }
+
+        /* Tienda */
+        #shop {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid #333;
+            box-shadow: 0 0 30px rgba(0,0,0,0.7);
+            width: 80%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .shop-tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #444;
+        }
+
+        .shop-tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .shop-tab.active {
+            border-bottom: 3px solid #4a90e2;
+            color: #4a90e2;
+        }
+
+        .shop-content {
+            display: none;
+        }
+
+        .shop-content.active {
+            display: block;
+        }
+
+        .shop-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: rgba(50, 50, 50, 0.5);
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .shop-item:hover {
+            background: rgba(70, 70, 70, 0.7);
+        }
+
+        .shop-item button {
+            padding: 8px 15px;
+            font-size: 0.9rem;
+        }
+
+        /* Menú de armas */
+        #weaponMenu {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+
+        .weapon-menu-item {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(50, 50, 50, 0.7);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 24px;
+        }
+
+        .weapon-menu-item:hover {
+            background: rgba(70, 70, 70, 0.9);
+        }
+
+        .weapon-menu-item.active {
+            background: rgba(30, 80, 150, 0.7);
+            border: 2px solid #4a90e2;
+        }
+
+        /* Sombras */
+        .shadow {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(ellipse at center, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0) 70%);
+            z-index: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="map"></div>
+        <div id="gameArea"></div>
+        <div id="ggMessage">GG</div>
+        <button id="resetButton">REINICIAR JUEGO</button>
+        <div id="menu">
+            <h1 style="margin-bottom: 20px;">Fusión: Guerra y Paz</h1>
+            <button class="menu-button" onclick="startGame('single')">Jugador Único</button>
+            <button class="menu-button" onclick="startGame('multi')">Multijugador</button>
+            <button class="menu-button" onclick="showShop()">Tienda</button>
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button id="btnPeace">🕊️ PAZ</button>
+        <button id="btnWar">⚔️ GUERRA</button>
+    </div>
+    
+    <div class="status">
+        <div class="mode-indicator" id="modeIndicator">MODO: PAZ</div>
+        <div class="stats" id="stats">Jugadores: 0/0 | Enemigos: 0/0</div>
+        <div class="stats" id="weaponStats">Munición: ✅</div>
+        <div class="stats" id="timeStats">Tiempo: 00:00</div>
+        <div class="stats" id="coinStats">Monedas: 0</div>
+    </div>
+
+    <div id="sidebarP1">
+        <h2>Jugador 1</h2>
+        <div id="weaponListP1"></div>
+        <div class="shortcuts">
+            <p>Disparo: Espacio</p>
+            <p>Cambiar arma: Z</p>
+            <p>Movimiento: WASD</p>
+            <p>Tienda: T</p>
+        </div>
+    </div>
+
+    <div id="sidebarP2">
+        <h2>Jugador 2</h2>
+        <div id="weaponListP2"></div>
+        <div class="shortcuts">
+            <p>Disparo: Enter</p>
+            <p>Cambiar arma: \</p>
+            <p>Movimiento: Flechas</p>
+            <p>Tienda: T</p>
+        </div>
+    </div>
+
+    <!-- Menú de armas -->
+    <div id="weaponMenu">
+        <div class="weapon-menu-item active" data-weapon="colt">🔫</div>
+        <div class="weapon-menu-item" data-weapon="knife">🔪</div>
+        <div class="weapon-menu-item" data-weapon="grenade">💣</div>
+    </div>
+
+    <!-- Tienda -->
+    <div id="shop">
+        <h2 style="text-align: center; margin-bottom: 20px;">TIENDA</h2>
+        <div class="shop-tabs">
+            <div class="shop-tab active" data-tab="weapons">Armas</div>
+            <div class="shop-tab" data-tab="skins">Skins</div>
+            <div class="shop-tab" data-tab="upgrades">Mejoras</div>
+        </div>
+        
+        <div class="shop-content active" id="weapons-tab">
+            <h3>Armas Disponibles</h3>
+            <div class="shop-item">
+                <div>
+                    <h4>Luger P08</h4>
+                    <p>Pistola alemana de baja potencia</p>
+                </div>
+                <button onclick="buyWeapon('luger')">Comprar (50 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>STG 44</h4>
+                    <p>Rifle de asalto alemán</p>
+                </div>
+                <button onclick="buyWeapon('stg44')">Comprar (150 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Panzerfaust</h4>
+                    <p>Lanzacohetes alemán</p>
+                </div>
+                <button onclick="buyWeapon('panzerfaust')">Comprar (200 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Kar98k</h4>
+                    <p>Rifle de francotirador alemán</p>
+                </div>
+                <button onclick="buyWeapon('kar98k')">Comprar (100 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>MP40</h4>
+                    <p>Subfusil alemán</p>
+                </div>
+                <button onclick="buyWeapon('mp40')">Comprar (120 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>MG42</h4>
+                    <p>Ametralladora alemana</p>
+                </div>
+                <button onclick="buyWeapon('mg42')">Comprar (180 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Mosin Nagant</h4>
+                    <p>Rifle de francotirador ruso</p>
+                </div>
+                <button onclick="buyWeapon('mosin')">Comprar (90 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>PPSh-41</h4>
+                    <p>Subfusil ruso</p>
+                </div>
+                <button onclick="buyWeapon('ppsh')">Comprar (110 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Colt M1911</h4>
+                    <p>Pistola americana</p>
+                </div>
+                <button onclick="buyWeapon('colt')">Comprar (60 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>M2 Flamethrower</h4>
+                    <p>Lanzallamas americano</p>
+                </div>
+                <button onclick="buyWeapon('flamethrower')">Comprar (250 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Browning M1918</h4>
+                    <p>Rifle automático americano</p>
+                </div>
+                <button onclick="buyWeapon('browning')">Comprar (160 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>M1 Bazooka</h4>
+                    <p>Lanzacohetes americano</p>
+                </div>
+                <button onclick="buyWeapon('bazooka')">Comprar (220 monedas)</button>
+            </div>
+        </div>
+        
+        <div class="shop-content" id="skins-tab">
+            <h3>Skins de Personaje</h3>
+            <div class="shop-item">
+                <div>
+                    <h4>Soldado Básico</h4>
+                    <p>Aspecto estándar de soldado</p>
+                </div>
+                <button onclick="buySkin('soldier')">Comprar (50 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Comando</h4>
+                    <p>Uniforme de operaciones especiales</p>
+                </div>
+                <button onclick="buySkin('commando')">Comprar (100 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Francotirador</h4>
+                    <p>Uniforme de camuflaje</p>
+                </div>
+                <button onclick="buySkin('sniper')">Comprar (150 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Médico</h4>
+                    <p>Uniforme médico con cruz roja</p>
+                </div>
+                <button onclick="buySkin('medic')">Comprar (120 monedas)</button>
+            </div>
+        </div>
+        
+        <div class="shop-content" id="upgrades-tab">
+            <h3>Mejoras de Personaje</h3>
+            <div class="shop-item">
+                <div>
+                    <h4>Salud +25</h4>
+                    <p>Aumenta la salud máxima en 25 puntos</p>
+                </div>
+                <button onclick="buyUpgrade('health')">Comprar (80 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Regeneración</h4>
+                    <p>Regenera salud lentamente con el tiempo</p>
+                </div>
+                <button onclick="buyUpgrade('regen')">Comprar (120 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Recarga Rápida</h4>
+                    <p>Reduce el tiempo de recarga de armas</p>
+                </div>
+                <button onclick="buyUpgrade('reload')">Comprar (100 monedas)</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <h4>Velocidad de Caminar</h4>
+                    <p>Aumenta la velocidad de movimiento</p>
+                </div>
+                <button onclick="buyUpgrade('speed')">Comprar (90 monedas)</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+            <button class="menu-button" onclick="hideShop()">Cerrar Tienda</button>
+        </div>
+    </div>
+
+    <script>
+        // Configuración del juego
+        const NUM_ENEMIES = 5;
+        let warMode = false;
+        let animationId;
+        let gameTime = 0;
+        let gameRunning = false;
+        let playerCoins = 0;
+        
+        // Elementos DOM
+        const map = document.getElementById('map');
+        const gameArea = document.getElementById('gameArea');
+        const btnPeace = document.getElementById('btnPeace');
+        const btnWar = document.getElementById('btnWar');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const statsElement = document.getElementById('stats');
+        const weaponStats = document.getElementById('weaponStats');
+        const timeStats = document.getElementById('timeStats');
+        const coinStats = document.getElementById('coinStats');
+        const ggMessage = document.getElementById('ggMessage');
+        const resetButton = document.getElementById('resetButton');
+        const weaponListP1 = document.getElementById('weaponListP1');
+        const weaponListP2 = document.getElementById('weaponListP2');
+        const shop = document.getElementById('shop');
+        const weaponMenu = document.getElementById('weaponMenu');
+        
+        // Arrays de juego
+        let players = [];
+        let enemies = [];
+        let bulletsPlayer = [];
+        let bulletsEnemy = [];
+        let enemiesToRemove = [];
+        let bulletsPlayerToRemove = [];
+        let bulletsEnemyToRemove = [];
+        let coins = [];
+        let medkits = [];
+        let trees = [];
+        
+        // Sistema de armas
+        let weapons = [
+            {name:'COLT M1911A1', speed:7, damage:20, type:'pistol'},
+            {name:'USP', speed:8, damage:18, type:'pistol'},
+            {name:'KAR98K', speed:10, damage:40, type:'sniper'},
+            {name:'UZI', speed:12, damage:10, type:'smg'},
+            {name:'AUG A1', speed:9, damage:15, type:'rifle'}
+        ];
+        let currentWeaponP1 = weapons[0];
+        let currentWeaponP2 = weapons[1];
+        let keysPressed = {};
+        
+        // Nombres para personajes
+        const names = [
+            'Sgt. Miller', 'Cpt. Rodriguez', 'Lt. Chen', 'Maj. Schmidt',
+            'Col. Santos', 'Sgt. Kowalski', 'Lt. Yamamoto', 'Cpt. Ivanov',
+            'Maj. Larsen', 'Col. Fitzgerald'
+        ];
+        
+        // Clase de personaje
+        class Character {
+            constructor(id, name, isPlayer = false) {
+                this.id = id;
+                this.name = name;
+                this.x = Math.random() * (window.innerWidth - 50);
+                this.y = Math.random() * (window.innerHeight - 60);
+                this.speed = isPlayer ? 8 : 2;
+                this.health = isPlayer ? 100 : 50;
+                this.maxHealth = isPlayer ? 100 : 50;
+                this.alive = true;
+                this.isPlayer = isPlayer;
+                this.element = null;
+                this.healthBar = null;
+                this.direction = {x:0, y:-1};
+                this.shadow = null;
+                
+                if (isPlayer) {
+                    this.createPlayerElement();
+                } else {
+                    this.dirX = (Math.random() > 0.5 ? 1 : -1);
+                    this.dirY = (Math.random() > 0.5 ? 1 : -1);
+                    this.createEnemyElement();
+                }
+            }
+            
+            createPlayerElement() {
+                const character = document.createElement('div');
+                character.className = 'player';
+                character.id = `player-${this.id}`;
+                character.style.left = `${this.x}px`;
+                character.style.top = `${this.y}px`;
+                character.textContent = 'P' + (this.id + 1);
+                
+                const healthBar = document.createElement('div');
+                healthBar.className = 'health-bar';
+                const healthFill = document.createElement('div');
+                healthFill.className = 'health-fill';
+                healthFill.style.width = '100%';
+                healthBar.appendChild(healthFill);
+                character.appendChild(healthBar);
+                
+                // Crear sombra
+                const shadow = document.createElement('div');
+                shadow.className = 'shadow';
+                shadow.style.width = '50px';
+                shadow.style.height = '20px';
+                shadow.style.left = `${this.x - 5}px`;
+                shadow.style.top = `${this.y + 35}px`;
+                gameArea.appendChild(shadow);
+                this.shadow = shadow;
+                
+                gameArea.appendChild(character);
+                this.element = character;
+                this.healthBar = healthFill;
+            }
+            
+            createEnemyElement() {
+                const character = document.createElement('div');
+                character.className = 'enemy';
+                character.id = `enemy-${this.id}`;
+                character.style.left = `${this.x}px`;
+                character.style.top = `${this.y}px`;
+                character.textContent = 'E' + (this.id + 1);
+                
+                const healthBar = document.createElement('div');
+                healthBar.className = 'health-bar';
+                const healthFill = document.createElement('div');
+                healthFill.className = 'health-fill';
+                healthFill.style.width = '100%';
+                healthBar.appendChild(healthFill);
+                character.appendChild(healthBar);
+                
+                // Crear sombra
+                const shadow = document.createElement('div');
+                shadow.className = 'shadow';
+                shadow.style.width = '50px';
+                shadow.style.height = '20px';
+                shadow.style.left = `${this.x - 5}px`;
+                shadow.style.top = `${this.y + 35}px`;
+                gameArea.appendChild(shadow);
+                this.shadow = shadow;
+                
+                gameArea.appendChild(character);
+                this.element = character;
+                this.healthBar = healthFill;
+            }
+            
+            update() {
+                if (!this.alive) return;
+                
+                if (this.isPlayer) {
+                    // Los jugadores se controlan con teclado
+                    this.element.style.left = `${this.x}px`;
+                    this.element.style.top = `${this.y}px`;
+                    this.shadow.style.left = `${this.x - 5}px`;
+                    this.shadow.style.top = `${this.y + 35}px`;
+                    this.healthBar.style.width = `${(this.health / this.maxHealth) * 100}%`;
+                    
+                    // Actualizar clases de estado de salud
+                    this.element.classList.remove('damaged', 'critical');
+                    if (this.health < 30) {
+                        this.element.classList.add('critical');
+                    } else if (this.health < 70) {
+                        this.element.classList.add('damaged');
+                    }
+                } else {
+                    // Movimiento de enemigos
+                    if (warMode) {
+                        this.x += this.dirX * this.speed;
+                        this.y += this.dirY * this.speed;
+                        
+                        if (this.x <= 0 || this.x >= window.innerWidth - 40) this.dirX *= -1;
+                        if (this.y <= 0 || this.y >= window.innerHeight - 40) this.dirY *= -1;
+                        
+                        this.element.style.left = `${this.x}px`;
+                        this.element.style.top = `${this.y}px`;
+                        this.shadow.style.left = `${this.x - 5}px`;
+                        this.shadow.style.top = `${this.y + 35}px`;
+                        this.healthBar.style.width = `${(this.health / this.maxHealth) * 100}%`;
+                        
+                        // Actualizar clases de estado de salud
+                        this.element.classList.remove('damaged', 'critical');
+                        if (this.health < 15) {
+                            this.element.classList.add('critical');
+                        } else if (this.health < 25) {
+                            this.element.classList.add('damaged');
+                        }
+                        
+                        // Disparar en modo guerra
+                        if (Math.random() < 0.02 && players.length > 0) {
+                            let target = players[Math.floor(Math.random() * players.length)];
+                            this.shootAt(target);
+                        }
+                    }
+                }
+            }
+            
+            shootAt(target) {
+                if (!this.alive || !target.alive) return;
+                
+                const bullet = document.createElement('div');
+                bullet.className = 'bullet-enemy';
+                bullet.style.left = `${this.x + 20}px`;
+                bullet.style.top = `${this.y + 20}px`;
+                gameArea.appendChild(bullet);
+                
+                let dx = target.x - this.x;
+                let dy = target.y - this.y;
+                let length = Math.sqrt(dx * dx + dy * dy);
+                dx /= length;
+                dy /= length;
+                
+                bulletsEnemy.push({
+                    el: bullet, 
+                    x: this.x + 20, 
+                    y: this.y + 20, 
+                    dx: dx, 
+                    dy: dy, 
+                    speed: 6, 
+                    damage: 10
+                });
+            }
+            
+            takeDamage(amount) {
+                if (!this.alive) return;
+                
+                this.health -= amount;
+                this.healthBar.style.width = `${(this.health / this.maxHealth) * 100}%`;
+                
+                if (this.health <= 0) {
+                    this.health = 0;
+                    this.alive = false;
+                    this.element.classList.add('dead');
+                    
+                    // Crear explosión al morir
+                    this.createExplosion(this.x, this.y);
+                    
+                    if (!this.isPlayer) {
+                        // Marcar enemigo para eliminación
+                        enemiesToRemove.push(this);
+                        
+                        // Generar monedas al matar enemigo
+                        createCoins(this.x, this.y);
+                    }
+                }
+            }
+            
+            createExplosion(x, y) {
+                const explosion = document.createElement('div');
+                explosion.className = 'explosion';
+                explosion.style.left = `${x - 30}px`;
+                explosion.style.top = `${y - 30}px`;
+                gameArea.appendChild(explosion);
+                
+                setTimeout(() => {
+                    if (explosion.parentNode) {
+                        gameArea.removeChild(explosion);
+                    }
+                }, 600);
+            }
+        }
+        
+        // Crear monedas al matar enemigo
+        function createCoins(x, y) {
+            const numCoins = Math.floor(Math.random() * 3) + 1; // 1-3 monedas
+            
+            for (let i = 0; i < numCoins; i++) {
+                const coin = document.createElement('div');
+                coin.className = 'coin';
+                coin.style.left = `${x + Math.random() * 40 - 20}px`;
+                coin.style.top = `${y + Math.random() * 40 - 20}px`;
+                gameArea.appendChild(coin);
+                
+                const coinValue = Math.floor(Math.random() * 86) + 15; // 15-100 monedas
+                
+                coins.push({
+                    el: coin,
+                    x: parseFloat(coin.style.left),
+                    y: parseFloat(coin.style.top),
+                    value: coinValue
+                });
+            }
+        }
+        
+        // Crear medkits en edificios
+        function createMedkits() {
+            const buildingPositions = [
+                { left: 100, top: 100, width: 80, height: 60 },
+                { left: window.innerWidth - 180, top: 100, width: 70, height: 50 },
+                { left: 100, top: window.innerHeight - 160, width: 90, height: 70 },
+                { left: window.innerWidth - 190, top: window.innerHeight - 140, width: 75, height: 55 },
+                { left: window.innerWidth/2 - 100, top: window.innerHeight/2 - 75, width: 100, height: 80 }
+            ];
+            
+            buildingPositions.forEach((pos, index) => {
+                const medkit = document.createElement('div');
+                medkit.className = 'medkit';
+                medkit.textContent = '+';
+                medkit.style.left = `${pos.left + pos.width/2 - 12.5}px`;
+                medkit.style.top = `${pos.top + pos.height/2 - 10}px`;
+                gameArea.appendChild(medkit);
+                
+                medkits.push({
+                    el: medkit,
+                    x: parseFloat(medkit.style.left),
+                    y: parseFloat(medkit.style.top)
+                });
+            });
+        }
+        
+        // Crear mapa complejo
+        function createComplexMap() {
+            // Terreno base
+            createTerrain();
+            
+            // Río serpenteante
+            createRiver();
+            
+            // Montañas
+            createMountains();
+            
+            // Edificios
+            createBuildings();
+            
+            // Árboles en grupos (bosques)
+            createForests();
+            
+            // Rocas
+            createRocks();
+            
+            // Puente sobre el río
+            createBridge();
+            
+            // Crear medkits
+            createMedkits();
+        }
+        
+        function createTerrain() {
+            // Áreas de hierba
+            for (let i = 0; i < 8; i++) {
+                const grass = document.createElement('div');
+                grass.className = 'terrain grass';
+                grass.style.width = `${200 + Math.random() * 150}px`;
+                grass.style.height = `${150 + Math.random() * 100}px`;
+                grass.style.left = `${Math.random() * (window.innerWidth - 300)}px`;
+                grass.style.top = `${Math.random() * (window.innerHeight - 250)}px`;
+                map.appendChild(grass);
+            }
+            
+            // Áreas de arena
+            for (let i = 0; i < 4; i++) {
+                const sand = document.createElement('div');
+                sand.className = 'terrain sand';
+                sand.style.width = `${150 + Math.random() * 100}px`;
+                sand.style.height = `${100 + Math.random() * 80}px`;
+                sand.style.left = `${Math.random() * (window.innerWidth - 200)}px`;
+                sand.style.top = `${Math.random() * (window.innerHeight - 180)}px`;
+                map.appendChild(sand);
+            }
+        }
+        
+        function createRiver() {
+            const river = document.createElement('div');
+            river.className = 'river';
+            river.style.width = '40px';
+            river.style.height = '600px';
+            river.style.left = '300px';
+            river.style.top = '100px';
+            river.style.transform = 'rotate(25deg)';
+            map.appendChild(river);
+        }
+        
+        function createMountains() {
+            for (let i = 0; i < 5; i++) {
+                const mountain = document.createElement('div');
+                mountain.className = 'mountain';
+                mountain.style.width = `${120 + Math.random() * 80}px`;
+                mountain.style.height = `${80 + Math.random() * 60}px`;
+                mountain.style.left = `${Math.random() * (window.innerWidth - 200)}px`;
+                mountain.style.top = `${Math.random() * (window.innerHeight - 150)}px`;
+                map.appendChild(mountain);
+            }
+        }
+        
+        function createBuildings() {
+            const buildingPositions = [
+                { left: 100, top: 100, width: 80, height: 60 },
+                { left: window.innerWidth - 180, top: 100, width: 70, height: 50 },
+                { left: 100, top: window.innerHeight - 160, width: 90, height: 70 },
+                { left: window.innerWidth - 190, top: window.innerHeight - 140, width: 75, height: 55 },
+                { left: window.innerWidth/2 - 100, top: window.innerHeight/2 - 75, width: 100, height: 80 }
+            ];
+            
+            buildingPositions.forEach((pos, index) => {
+                const building = document.createElement('div');
+                building.className = 'building map-element';
+                building.style.width = `${pos.width}px`;
+                building.style.height = `${pos.height}px`;
+                building.style.left = `${pos.left}px`;
+                building.style.top = `${pos.top}px`;
+                
+                // Añadir ventanas
+                for (let i = 0; i < 4; i++) {
+                    const window = document.createElement('div');
+                    window.className = 'window';
+                    window.style.left = `${15 + (i % 2) * 30}px`;
+                    window.style.top = `${15 + Math.floor(i / 2) * 20}px`;
+                    building.appendChild(window);
+                }
+                
+                // Añadir puerta
+                const door = document.createElement('div');
+                door.className = 'door';
+                door.style.left = `${pos.width/2 - 6}px`;
+                building.appendChild(door);
+                
+                map.appendChild(building);
+            });
+        }
+        
+        function createForests() {
+            // Tres áreas boscosas
+            const forestAreas = [
+                { left: 50, top: 200, count: 8 },
+                { left: 500, top: 50, count: 6 },
+                { left: 200, top: 400, count: 7 }
+            ];
+            
+            forestAreas.forEach(area => {
+                for (let i = 0; i < area.count; i++) {
+                    const tree = document.createElement('div');
+                    tree.className = 'tree map-element';
+                    tree.style.left = `${area.left + Math.random() * 120}px`;
+                    tree.style.top = `${area.top + Math.random() * 100}px`;
+                    
+                    tree.innerHTML = `
+                        <div class="tree-trunk"></div>
+                        <div class="tree-top"></div>
+                    `;
+                    
+                    map.appendChild(tree);
+                    
+                    // Guardar información del árbol para detección de colisiones
+                    trees.push({
+                        el: tree,
+                        x: parseFloat(tree.style.left),
+                        y: parseFloat(tree.style.top),
+                        width: 50,
+                        height: 80
+                    });
+                }
+            });
+        }
+        
+        function createRocks() {
+            for (let i = 0; i < 12; i++) {
+                const rock = document.createElement('div');
+                rock.className = 'rock map-element';
+                rock.style.left = `${Math.random() * (window.innerWidth - 50)}px`;
+                rock.style.top = `${Math.random() * (window.innerHeight - 40)}px`;
+                map.appendChild(rock);
+            }
+        }
+        
+        function createBridge() {
+            const bridge = document.createElement('div');
+            bridge.className = 'bridge map-element';
+            bridge.style.width = '120px';
+            bridge.style.height = '25px';
+            bridge.style.left = '280px';
+            bridge.style.top = '350px';
+            bridge.style.transform = 'rotate(25deg)';
+            map.appendChild(bridge);
+        }
+        
+        // Sistema de armas
+        function randomName() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            return 'Player_' + chars[Math.floor(Math.random()*chars.length)] + Math.floor(Math.random()*100);
+        }
+
+        function renderWeapons() {
+            weaponListP1.innerHTML = '';
+            weaponListP2.innerHTML = '';
+            weapons.forEach((w)=>{
+                const div1 = document.createElement('div');
+                div1.className = 'weapon';
+                if (w === currentWeaponP1) div1.classList.add('active');
+                div1.innerHTML = `<span>${w.name}</span>`;
+                div1.onclick = ()=>{ currentWeaponP1 = w; renderWeapons(); };
+                weaponListP1.appendChild(div1);
+
+                const div2 = document.createElement('div');
+                div2.className = 'weapon';
+                if (w === currentWeaponP2) div2.classList.add('active');
+                div2.innerHTML = `<span>${w.name}</span>`;
+                div2.onclick = ()=>{ currentWeaponP2 = w; renderWeapons(); };
+                weaponListP2.appendChild(div2);
+            });
+        }
+
+        function createPlayer(x, y, name, id) {
+            return new Character(players.length, name, true);
+        }
+
+        function createEnemy(x, y) {
+            const name = names[Math.floor(Math.random() * names.length)];
+            return new Character(enemies.length, name, false);
+        }
+
+        document.addEventListener('keydown', e => {
+            keysPressed[e.key] = true;
+            if (!gameRunning) return;
+
+            // Abrir tienda con T
+            if (e.key === 't' || e.key === 'T') {
+                showShop();
+            }
+
+            players.forEach(p => {
+                if (p.id === 0) { // Jugador 1
+                    if (e.key === ' ') shootPlayer(p, currentWeaponP1);
+                    if (e.key === 'z') changeWeapon('p1');
+                }
+                if (p.id === 1) { // Jugador 2
+                    if (e.key === 'Enter') shootPlayer(p, currentWeaponP2);
+                    if (e.key === '\\') changeWeapon('p2');
+                }
+            });
+        });
+
+        document.addEventListener('keyup', e => {
+            delete keysPressed[e.key];
+        });
+
+        function changeWeapon(player) {
+            if (player === 'p1') {
+                let index = weapons.indexOf(currentWeaponP1);
+                currentWeaponP1 = weapons[(index + 1) % weapons.length];
+            } else {
+                let index = weapons.indexOf(currentWeaponP2);
+                currentWeaponP2 = weapons[(index + 1) % weapons.length];
+            }
+            renderWeapons();
+        }
+
+        function shootPlayer(player, weapon) {
+            if (!warMode || !player.alive) return;
+            
+            const bullet = document.createElement('div');
+            bullet.className = 'bullet-player';
+            bullet.style.left = (player.x + 20) + 'px';
+            bullet.style.top = (player.y + 20) + 'px';
+            gameArea.appendChild(bullet);
+            
+            bulletsPlayer.push({
+                el: bullet, 
+                x: player.x + 20, 
+                y: player.y + 20, 
+                dx: player.direction.x, 
+                dy: player.direction.y, 
+                speed: weapon.speed, 
+                damage: weapon.damage
+            });
+        }
+
+        // Actualizar estadísticas
+        function updateStats() {
+            const alivePlayers = players.filter(p => p.alive).length;
+            const aliveEnemies = enemies.filter(e => e.alive).length;
+            
+            statsElement.textContent = `Jugadores: ${alivePlayers}/${players.length} | Enemigos: ${aliveEnemies}/${enemies.length}`;
+            coinStats.textContent = `Monedas: ${playerCoins}`;
+            
+            // Actualizar tiempo de juego
+            const minutes = Math.floor(gameTime / 60);
+            const seconds = Math.floor(gameTime % 60);
+            timeStats.textContent = `Tiempo: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (warMode) {
+                modeIndicator.textContent = 'MODO: GUERRA';
+                modeIndicator.style.background = 'linear-gradient(135deg, #c62828, #b71c1c)';
+                weaponStats.textContent = 'Munición: 🔥';
+            } else {
+                modeIndicator.textContent = 'MODO: PAZ';
+                modeIndicator.style.background = 'linear-gradient(135deg, #2E7D32, #1B5E20)';
+                weaponStats.textContent = 'Munición: ✅';
+            }
+        }
+        
+        // Función para limpiar elementos marcados para eliminación
+        function cleanupMarkedElements() {
+            // Eliminar enemigos marcados
+            for (let i = enemiesToRemove.length - 1; i >= 0; i--) {
+                const enemy = enemiesToRemove[i];
+                const index = enemies.indexOf(enemy);
+                if (index !== -1) {
+                    if (enemy.element && enemy.element.parentNode) {
+                        gameArea.removeChild(enemy.element);
+                    }
+                    if (enemy.shadow && enemy.shadow.parentNode) {
+                        gameArea.removeChild(enemy.shadow);
+                    }
+                    enemies.splice(index, 1);
+                }
+            }
+            enemiesToRemove = [];
+            
+            // Eliminar balas de jugador marcadas
+            for (let i = bulletsPlayerToRemove.length - 1; i >= 0; i--) {
+                const bullet = bulletsPlayerToRemove[i];
+                const index = bulletsPlayer.indexOf(bullet);
+                if (index !== -1) {
+                    if (bullet.el && bullet.el.parentNode) {
+                        gameArea.removeChild(bullet.el);
+                    }
+                    bulletsPlayer.splice(index, 1);
+                }
+            }
+            bulletsPlayerToRemove = [];
+            
+            // Eliminar balas de enemigo marcadas
+            for (let i = bulletsEnemyToRemove.length - 1; i >= 0; i--) {
+                const bullet = bulletsEnemyToRemove[i];
+                const index = bulletsEnemy.indexOf(bullet);
+                if (index !== -1) {
+                    if (bullet.el && bullet.el.parentNode) {
+                        gameArea.removeChild(bullet.el);
+                    }
+                    bulletsEnemy.splice(index, 1);
+                }
+            }
+            bulletsEnemyToRemove = [];
+        }
+        
+        // Verificar colisión con árboles
+        function isCollidingWithTree(x, y) {
+            for (const tree of trees) {
+                if (x >= tree.x && x <= tree.x + tree.width &&
+                    y >= tree.y && y <= tree.y + tree.height) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        
+        // Animación principal
+        function animate() {
+            // Actualizar jugadores
+            players.forEach(player => {
+                if (player.alive) {
+                    let newX = player.x;
+                    let newY = player.y;
+                    
+                    if (player.id === 0) { // Jugador 1
+                        if (keysPressed['w']){ newY -= player.speed; player.direction = {x:0, y:-1}; }
+                        if (keysPressed['s']){ newY += player.speed; player.direction = {x:0, y:1}; }
+                        if (keysPressed['a']){ newX -= player.speed; player.direction = {x:-1, y:0}; }
+                        if (keysPressed['d']){ newX += player.speed; player.direction = {x:1, y:0}; }
+                    }
+                    if (player.id === 1) { // Jugador 2
+                        if (keysPressed['ArrowUp']){ newY -= player.speed; player.direction = {x:0, y:-1}; }
+                        if (keysPressed['ArrowDown']){ newY += player.speed; player.direction = {x:0, y:1}; }
+                        if (keysPressed['ArrowLeft']){ newX -= player.speed; player.direction = {x:-1, y:0}; }
+                        if (keysPressed['ArrowRight']){ newX += player.speed; player.direction = {x:1, y:0}; }
+                    }
+                    
+                    // Verificar colisión con árboles
+                    if (!isCollidingWithTree(newX, newY) && 
+                        !isCollidingWithTree(newX + 40, newY) && 
+                        !isCollidingWithTree(newX, newY + 40) && 
+                        !isCollidingWithTree(newX + 40, newY + 40)) {
+                        player.x = Math.max(0, Math.min(window.innerWidth - 40, newX));
+                        player.y = Math.max(0, Math.min(window.innerHeight - 40, newY));
+                    }
+                }
+                
+                player.update();
+                
+                // Verificar recolección de monedas
+                for (let i = coins.length - 1; i >= 0; i--) {
+                    const coin = coins[i];
+                    if (Math.abs(player.x - coin.x) < 30 && Math.abs(player.y - coin.y) < 30) {
+                        playerCoins += coin.value;
+                        gameArea.removeChild(coin.el);
+                        coins.splice(i, 1);
+                    }
+                }
+                
+                // Verificar recolección de medkits
+                for (let i = medkits.length - 1; i >= 0; i--) {
+                    const medkit = medkits[i];
+                    if (Math.abs(player.x - medkit.x) < 30 && Math.abs(player.y - medkit.y) < 30) {
+                        player.health = player.maxHealth;
+                        gameArea.removeChild(medkit.el);
+                        medkits.splice(i, 1);
+                    }
+                }
+            });
+            
+            // Actualizar enemigos
+            enemies.forEach(enemy => {
+                enemy.update();
+            });
+            
+            // Balas jugador - iterar hacia atrás para evitar problemas al eliminar
+            for (let i = bulletsPlayer.length - 1; i >= 0; i--) {
+                const b = bulletsPlayer[i];
+                b.x += b.dx * b.speed;
+                b.y += b.dy * b.speed;
+                b.el.style.left = b.x + 'px';
+                b.el.style.top = b.y + 'px';
+                
+                if (b.x < 0 || b.x > window.innerWidth || b.y < 0 || b.y > window.innerHeight) {
+                    bulletsPlayerToRemove.push(b);
+                    continue;
+                }
+                
+                // Verificar colisión con árboles
+                if (isCollidingWithTree(b.x, b.y)) {
+                    bulletsPlayerToRemove.push(b);
+                    continue;
+                }
+                
+                let hit = false;
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const en = enemies[j];
+                    if (en.alive && Math.abs(b.x - en.x) < 25 && Math.abs(b.y - en.y) < 25) {
+                        en.takeDamage(b.damage);
+                        bulletsPlayerToRemove.push(b);
+                        hit = true;
+                        break;
+                    }
+                }
+                
+                if (hit) continue;
+            }
+            
+            // Balas enemigo - iterar hacia atrás para evitar problemas al eliminar
+            for (let i = bulletsEnemy.length - 1; i >= 0; i--) {
+                const b = bulletsEnemy[i];
+                b.x += b.dx * b.speed;
+                b.y += b.dy * b.speed;
+                b.el.style.left = b.x + 'px';
+                b.el.style.top = b.y + 'px';
+                
+                if (b.x < 0 || b.x > window.innerWidth || b.y < 0 || b.y > window.innerHeight) {
+                    bulletsEnemyToRemove.push(b);
+                    continue;
+                }
+                
+                // Verificar colisión con árboles
+                if (isCollidingWithTree(b.x, b.y)) {
+                    bulletsEnemyToRemove.push(b);
+                    continue;
+                }
+                
+                let hit = false;
+                for (let j = players.length - 1; j >= 0; j--) {
+                    const p = players[j];
+                    if (p.alive && Math.abs(b.x - p.x) < 25 && Math.abs(b.y - p.y) < 25) {
+                        p.takeDamage(b.damage);
+                        bulletsEnemyToRemove.push(b);
+                        hit = true;
+                        break;
+                    }
+                }
+                
+                if (hit) continue;
+            }
+            
+            // Limpiar elementos marcados para eliminación
+            cleanupMarkedElements();
+            
+            // Verificar fin del juego
+            if (enemies.length === 0) {
+                gameRunning = false;
+                ggMessage.textContent = '¡VICTORIA!';
+                ggMessage.style.color = '#0f0';
+                ggMessage.style.display = 'block';
+                resetButton.style.display = 'block';
+            }
+            
+            // Verificar si todos los jugadores están muertos
+            if (players.length > 0 && players.every(p => !p.alive)) {
+                gameRunning = false;
+                ggMessage.textContent = 'GAME OVER';
+                ggMessage.style.color = '#f00';
+                ggMessage.style.display = 'block';
+                resetButton.style.display = 'block';
+            }
+            
+            updateStats();
+            gameTime += 1/60; // Incrementar tiempo de juego
+            
+            if (gameRunning) {
+                animationId = requestAnimationFrame(animate);
+            }
+        }
+        
+        // Cambiar a modo paz
+        function setPeaceMode() {
+            warMode = false;
+            btnPeace.disabled = true;
+            btnWar.disabled = false;
+        }
+        
+        // Cambiar a modo guerra
+        function setWarMode() {
+            warMode = true;
+            btnPeace.disabled = false;
+            btnWar.disabled = true;
+        }
+        
+        // Mostrar tienda
+        function showShop() {
+            shop.style.display = 'block';
+        }
+        
+        // Ocultar tienda
+        function hideShop() {
+            shop.style.display = 'none';
+        }
+        
+        // Comprar arma
+        function buyWeapon(weaponType) {
+            // Implementar lógica de compra de armas
+            alert(`Has comprado ${weaponType} por X monedas`);
+        }
+        
+        // Comprar skin
+        function buySkin(skinType) {
+            // Implementar lógica de compra de skins
+            alert(`Has comprado el skin ${skinType} por X monedas`);
+        }
+        
+        // Comprar mejora
+        function buyUpgrade(upgradeType) {
+            // Implementar lógica de compra de mejoras
+            alert(`Has comprado la mejora ${upgradeType} por X monedas`);
+        }
+        
+        // Reiniciar juego
+        function resetGame() {
+            location.reload();
+        }
+        
+        // Inicialización del juego
+        function startGame(mode) {
+            document.getElementById('menu').style.display = 'none';
+            gameArea.style.display = 'block';
+            gameRunning = true;
+            players = [];
+            enemies = [];
+            bulletsPlayer = [];
+            bulletsEnemy = [];
+            enemiesToRemove = [];
+            bulletsPlayerToRemove = [];
+            bulletsEnemyToRemove = [];
+            coins = [];
+            medkits = [];
+            trees = [];
+            gameTime = 0;
+            playerCoins = 0;
+            
+            // Limpiar área de juego
+            gameArea.innerHTML = '';
+            ggMessage.style.display = 'none';
+            resetButton.style.display = 'none';
+            
+            renderWeapons();
+
+            if (mode === 'single') {
+                players.push(createPlayer(100, 100, randomName(), 'player1'));
+            } else {
+                players.push(createPlayer(100, 100, randomName(), 'player1'));
+                players.push(createPlayer(window.innerWidth - 140, window.innerHeight - 140, randomName(), 'player2'));
+            }
+
+            for (let i = 0; i < NUM_ENEMIES; i++) {
+                enemies.push(createEnemy(
+                    Math.random() * (window.innerWidth - 50), 
+                    Math.random() * (window.innerHeight - 60)
+                ));
+            }
+
+            // Iniciar en modo paz
+            setPeaceMode();
+            
+            // Iniciar animación
+            animate();
+        }
+        
+        // Inicialización
+        function init() {
+            createComplexMap();
+            updateStats();
+            
+            // Event listeners
+            btnPeace.addEventListener('click', setPeaceMode);
+            btnWar.addEventListener('click', setWarMode);
+            resetButton.addEventListener('click', resetGame);
+            
+            // Event listeners para pestañas de la tienda
+            document.querySelectorAll('.shop-tab').forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remover clase active de todas las pestañas
+                    document.querySelectorAll('.shop-tab').forEach(t => {
+                        t.classList.remove('active');
+                    });
+                    
+                    // Añadir clase active a la pestaña clickeada
+                    this.classList.add('active');
+                    
+                    // Ocultar todo el contenido
+                    document.querySelectorAll('.shop-content').forEach(content => {
+                        content.classList.remove('active');
+                    });
+                    
+                    // Mostrar el contenido correspondiente
+                    const tabId = this.getAttribute('data-tab');
+                    document.getElementById(`${tabId}-tab`).classList.add('active');
+                });
+            });
+            
+            // Event listeners para menú de armas
+            document.querySelectorAll('.weapon-menu-item').forEach(item => {
+                item.addEventListener('click', function() {
+                    // Remover clase active de todos los items
+                    document.querySelectorAll('.weapon-menu-item').forEach(i => {
+                        i.classList.remove('active');
+                    });
+                    
+                    // Añadir clase active al item clickeado
+                    this.classList.add('active');
+                    
+                    // Cambiar arma según la selección
+                    const weaponType = this.getAttribute('data-weapon');
+                    // Implementar cambio de arma
+                });
+            });
+        }
+        
+        // Ajustar al cambiar tamaño de ventana
+        window.addEventListener('resize', () => {
+            // En una implementación real, aquí se ajustarían las posiciones
+            // Para esta demo, simplemente recargamos
+            location.reload();
+        });
+        
+        // Iniciar la aplicación
+        init();
+    </script>
+</body>
+</html>

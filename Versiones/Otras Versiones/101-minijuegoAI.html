@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulación Guerra y Paz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a3a, #2c3e50);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        
+        #map {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #2d5a3d, #3d7a4d);
+            z-index: 1;
+        }
+        
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        #btnPeace {
+            background: linear-gradient(135deg, #4CAF50, #2E7D32);
+            color: white;
+        }
+        
+        #btnWar {
+            background: linear-gradient(135deg, #f44336, #c62828);
+            color: white;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        .character {
+            position: absolute;
+            transition: left 0.5s ease, top 0.5s ease;
+            z-index: 10;
+        }
+        
+        .character-body {
+            position: relative;
+            width: 24px;
+            height: 36px;
+            border-radius: 40% 40% 10% 10%;
+        }
+        
+        .character-head {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            top: -10px;
+            left: 2px;
+            z-index: 2;
+            border: 2px solid rgba(0, 0, 0, 0.3);
+        }
+        
+        .character-face {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 50%;
+            top: 6px;
+        }
+        
+        .face-left {
+            left: 3px;
+        }
+        
+        .face-right {
+            right: 3px;
+        }
+        
+        .character-legs {
+            position: absolute;
+            width: 100%;
+            height: 12px;
+            bottom: 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .leg {
+            width: 8px;
+            height: 12px;
+            border-radius: 0 0 4px 4px;
+        }
+        
+        .walking .leg {
+            animation: walk 0.5s infinite alternate;
+        }
+        
+        @keyframes walk {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-4px); }
+        }
+        
+        .weapon {
+            position: absolute;
+            width: 25px;
+            height: 8px;
+            background: #5d4037;
+            top: 15px;
+            right: -20px;
+            border-radius: 2px;
+            transform-origin: left center;
+            z-index: 1;
+        }
+        
+        .rifle {
+            background: linear-gradient(90deg, #5d4037, #8d6e63);
+        }
+        
+        .pistol {
+            width: 18px;
+            background: linear-gradient(90deg, #5d4037, #795548);
+        }
+        
+        .shotgun {
+            width: 30px;
+            background: linear-gradient(90deg, #5d4037, #6d4c41);
+        }
+        
+        .shooting .weapon {
+            animation: recoil 0.2s ease;
+        }
+        
+        @keyframes recoil {
+            0% { transform: translateX(0) rotate(0deg); }
+            50% { transform: translateX(-5px) rotate(-10deg); }
+            100% { transform: translateX(0) rotate(0deg); }
+        }
+        
+        .bullet {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: yellow;
+            border-radius: 50%;
+            z-index: 5;
+            box-shadow: 0 0 8px orange;
+        }
+        
+        .health-bar {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            width: 30px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: #4CAF50;
+            transition: width 0.3s;
+        }
+        
+        .damaged .health-fill {
+            background: #f44336;
+        }
+        
+        .dead {
+            opacity: 0.5;
+            filter: grayscale(100%);
+        }
+        
+        .dead .character-body {
+            background: #666 !important;
+        }
+        
+        .map-element {
+            position: absolute;
+            z-index: 2;
+        }
+        
+        .tree {
+            width: 40px;
+            height: 60px;
+        }
+        
+        .tree-trunk {
+            position: absolute;
+            width: 12px;
+            height: 30px;
+            background: #5d4037;
+            bottom: 0;
+            left: 14px;
+            border-radius: 3px;
+        }
+        
+        .tree-top {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: #2e7d32;
+            border-radius: 50%;
+            top: 0;
+        }
+        
+        .rock {
+            width: 30px;
+            height: 20px;
+            background: #757575;
+            border-radius: 5px;
+        }
+        
+        .building {
+            background: #8d6e63;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            z-index: 100;
+        }
+        
+        .mode-indicator {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stats {
+            font-size: 0.9rem;
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #ff9800, #ff5722, transparent);
+            border-radius: 50%;
+            z-index: 20;
+            animation: explode 0.5s ease-out forwards;
+        }
+        
+        @keyframes explode {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        .blood {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: radial-gradient(circle, #c62828, #b71c1c, transparent);
+            border-radius: 50%;
+            z-index: 4;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <div class="controls">
+        <button id="btnPeace">PAZ</button>
+        <button id="btnWar">GUERRA</button>
+    </div>
+    
+    <div class="status">
+        <div class="mode-indicator" id="modeIndicator">MODO: PAZ</div>
+        <div class="stats" id="stats">Vivos: 10 | Muertos: 0</div>
+    </div>
+
+    <script>
+        // Configuración
+        const NUM_CHARACTERS = 10;
+        let warMode = false;
+        let animationId;
+        
+        // Elementos DOM
+        const map = document.getElementById('map');
+        const btnPeace = document.getElementById('btnPeace');
+        const btnWar = document.getElementById('btnWar');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const statsElement = document.getElementById('stats');
+        
+        // Arrays de colores, nombres y armas
+        const colors = [
+            '#e74c3c', '#3498db', '#2ecc71', '#f1c40f', 
+            '#9b59b6', '#1abc9c', '#d35400', '#34495e',
+            '#e67e22', '#16a085'
+        ];
+        
+        const names = [
+            'Sgt. Miller', 'Cpt. Rodriguez', 'Lt. Chen', 'Maj. Schmidt',
+            'Col. Santos', 'Sgt. Kowalski', 'Lt. Yamamoto', 'Cpt. Ivanov',
+            'Maj. Larsen', 'Col. Fitzgerald'
+        ];
+        
+        const weapons = ['rifle', 'pistol', 'shotgun'];
+        
+        // Clase para representar un personaje
+        class Character {
+            constructor(id, name, color) {
+                this.id = id;
+                this.name = name;
+                this.color = color;
+                this.weapon = weapons[Math.floor(Math.random() * weapons.length)];
+                this.x = Math.random() * (window.innerWidth - 40);
+                this.y = Math.random() * (window.innerHeight - 50);
+                this.targetX = this.x;
+                this.targetY = this.y;
+                this.speed = 1 + Math.random() * 2;
+                this.moving = false;
+                this.health = 100;
+                this.alive = true;
+                this.element = null;
+                this.weaponElement = null;
+                this.healthBar = null;
+                this.createElement();
+            }
+            
+            createElement() {
+                const character = document.createElement('div');
+                character.className = 'character';
+                character.id = `character-${this.id}`;
+                
+                character.innerHTML = `
+                    <div class="health-bar">
+                        <div class="health-fill" style="width: 100%"></div>
+                    </div>
+                    <div class="character-head" style="background: ${this.color};">
+                        <div class="character-face face-left"></div>
+                        <div class="character-face face-right"></div>
+                    </div>
+                    <div class="character-body" style="background: ${this.color};"></div>
+                    <div class="character-legs">
+                        <div class="leg" style="background: ${this.color};"></div>
+                        <div class="leg" style="background: ${this.color};"></div>
+                    </div>
+                    <div class="weapon ${this.weapon}"></div>
+                `;
+                
+                character.style.left = `${this.x}px`;
+                character.style.top = `${this.y}px`;
+                
+                map.appendChild(character);
+                this.element = character;
+                this.weaponElement = character.querySelector('.weapon');
+                this.healthBar = character.querySelector('.health-fill');
+            }
+            
+            setTarget(x, y) {
+                this.targetX = x;
+                this.targetY = y;
+                this.moving = true;
+                this.element.classList.add('walking');
+            }
+            
+            update(characters) {
+                if (!this.alive) return;
+                
+                // Movimiento
+                if (this.moving) {
+                    const dx = this.targetX - this.x;
+                    const dy = this.targetY - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 5) {
+                        this.moving = false;
+                        this.element.classList.remove('walking');
+                    } else {
+                        this.x += (dx / distance) * this.speed;
+                        this.y += (dy / distance) * this.speed;
+                        
+                        this.element.style.left = `${this.x}px`;
+                        this.element.style.top = `${this.y}px`;
+                        
+                        // Rotar el arma según la dirección
+                        const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                        this.weaponElement.style.transform = `rotate(${angle}deg)`;
+                    }
+                }
+                
+                // Comportamiento en modo guerra
+                if (warMode && this.alive) {
+                    // Buscar enemigos cercanos
+                    let closestEnemy = null;
+                    let closestDistance = Infinity;
+                    
+                    characters.forEach(other => {
+                        if (other.id !== this.id && other.alive) {
+                            const dx = other.x - this.x;
+                            const dy = other.y - this.y;
+                            const distance = Math.sqrt(dx * dx + dy * dy);
+                            
+                            if (distance < 200 && distance < closestDistance) {
+                                closestEnemy = other;
+                                closestDistance = distance;
+                            }
+                        }
+                    });
+                    
+                    if (closestEnemy) {
+                        // Disparar al enemigo
+                        if (Math.random() < 0.05) {
+                            this.shootAt(closestEnemy);
+                        }
+                        
+                        // Perseguir o huir según la salud
+                        if (this.health > 30) {
+                            this.setTarget(closestEnemy.x, closestEnemy.y);
+                        } else {
+                            this.setTarget(
+                                this.x + (this.x - closestEnemy.x),
+                                this.y + (this.y - closestEnemy.y)
+                            );
+                        }
+                    } else if (!this.moving) {
+                        // Movimiento aleatorio si no hay enemigos cerca
+                        this.setRandomTarget();
+                    }
+                } else if (!this.moving && !warMode) {
+                    // Movimiento pacífico aleatorio
+                    if (Math.random() < 0.01) {
+                        this.setRandomTarget();
+                    }
+                }
+            }
+            
+            setRandomTarget() {
+                const newX = Math.random() * (window.innerWidth - 40);
+                const newY = Math.random() * (window.innerHeight - 50);
+                this.setTarget(newX, newY);
+            }
+            
+            shootAt(target) {
+                if (!this.alive || !target.alive) return;
+                
+                // Animación de disparo
+                this.element.classList.add('shooting');
+                setTimeout(() => {
+                    this.element.classList.remove('shooting');
+                }, 200);
+                
+                // Crear bala
+                const bullet = document.createElement('div');
+                bullet.className = 'bullet';
+                bullet.style.left = `${this.x + 20}px`;
+                bullet.style.top = `${this.y + 15}px`;
+                map.appendChild(bullet);
+                
+                // Calcular trayectoria
+                const dx = target.x - this.x;
+                const dy = target.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                const speed = 10;
+                
+                let currentX = this.x + 20;
+                let currentY = this.y + 15;
+                const moveX = (dx / distance) * speed;
+                const moveY = (dy / distance) * speed;
+                
+                const bulletInterval = setInterval(() => {
+                    currentX += moveX;
+                    currentY += moveY;
+                    bullet.style.left = `${currentX}px`;
+                    bullet.style.top = `${currentY}px`;
+                    
+                    // Verificar colisión
+                    const bulletDx = currentX - target.x;
+                    const bulletDy = currentY - target.y;
+                    const bulletDistance = Math.sqrt(bulletDx * bulletDx + bulletDy * bulletDy);
+                    
+                    if (bulletDistance < 20) {
+                        // Impacto
+                        clearInterval(bulletInterval);
+                        bullet.remove();
+                        this.createExplosion(target.x, target.y);
+                        target.takeDamage(25);
+                        
+                        // Crear mancha de sangre
+                        if (!target.alive) {
+                            this.createBlood(target.x, target.y);
+                        }
+                    } else if (currentX < 0 || currentX > window.innerWidth || 
+                              currentY < 0 || currentY > window.innerHeight) {
+                        // Bala fuera de pantalla
+                        clearInterval(bulletInterval);
+                        bullet.remove();
+                    }
+                }, 30);
+            }
+            
+            takeDamage(amount) {
+                if (!this.alive) return;
+                
+                this.health -= amount;
+                this.healthBar.style.width = `${this.health}%`;
+                
+                if (this.health <= 0) {
+                    this.health = 0;
+                    this.alive = false;
+                    this.element.classList.add('dead');
+                    this.element.classList.remove('walking');
+                    this.moving = false;
+                } else if (this.health < 30) {
+                    this.element.classList.add('damaged');
+                }
+            }
+            
+            createExplosion(x, y) {
+                const explosion = document.createElement('div');
+                explosion.className = 'explosion';
+                explosion.style.left = `${x - 20}px`;
+                explosion.style.top = `${y - 20}px`;
+                map.appendChild(explosion);
+                
+                setTimeout(() => {
+                    explosion.remove();
+                }, 500);
+            }
+            
+            createBlood(x, y) {
+                const blood = document.createElement('div');
+                blood.className = 'blood';
+                blood.style.left = `${x}px`;
+                blood.style.top = `${y}px`;
+                map.appendChild(blood);
+            }
+        }
+        
+        // Crear elementos del mapa
+        function createMapElements() {
+            // Crear árboles
+            for (let i = 0; i < 25; i++) {
+                const tree = document.createElement('div');
+                tree.className = 'tree map-element';
+                tree.style.top = `${Math.random() * window.innerHeight}px`;
+                tree.style.left = `${Math.random() * window.innerWidth}px`;
+                
+                tree.innerHTML = `
+                    <div class="tree-trunk"></div>
+                    <div class="tree-top"></div>
+                `;
+                
+                map.appendChild(tree);
+            }
+            
+            // Crear rocas
+            for (let i = 0; i < 15; i++) {
+                const rock = document.createElement('div');
+                rock.className = 'rock map-element';
+                rock.style.top = `${Math.random() * window.innerHeight}px`;
+                rock.style.left = `${Math.random() * window.innerWidth}px`;
+                map.appendChild(rock);
+            }
+            
+            // Crear edificios
+            for (let i = 0; i < 5; i++) {
+                const building = document.createElement('div');
+                building.className = 'building map-element';
+                building.style.width = `${80 + Math.random() * 70}px`;
+                building.style.height = `${60 + Math.random() * 50}px`;
+                building.style.top = `${Math.random() * (window.innerHeight - 100)}px`;
+                building.style.left = `${Math.random() * (window.innerWidth - 100)}px`;
+                map.appendChild(building);
+            }
+        }
+        
+        // Crear personajes
+        const characters = [];
+        
+        function createCharacters() {
+            for (let i = 0; i < NUM_CHARACTERS; i++) {
+                const character = new Character(
+                    i, 
+                    names[i], 
+                    colors[i]
+                );
+                characters.push(character);
+            }
+        }
+        
+        // Actualizar estadísticas
+        function updateStats() {
+            const aliveCount = characters.filter(c => c.alive).length;
+            const deadCount = NUM_CHARACTERS - aliveCount;
+            
+            statsElement.textContent = `Vivos: ${aliveCount} | Muertos: ${deadCount}`;
+            
+            if (warMode) {
+                modeIndicator.textContent = 'MODO: GUERRA';
+                modeIndicator.style.color = '#f44336';
+            } else {
+                modeIndicator.textContent = 'MODO: PAZ';
+                modeIndicator.style.color = '#4CAF50';
+            }
+        }
+        
+        // Animación principal
+        function animate() {
+            characters.forEach(character => {
+                character.update(characters);
+            });
+            
+            updateStats();
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        // Cambiar a modo paz
+        function setPeaceMode() {
+            warMode = false;
+            btnPeace.disabled = true;
+            btnWar.disabled = false;
+        }
+        
+        // Cambiar a modo guerra
+        function setWarMode() {
+            warMode = true;
+            btnPeace.disabled = false;
+            btnWar.disabled = true;
+            
+            // Todos buscan nuevos objetivos inmediatamente
+            characters.forEach(character => {
+                if (character.alive) {
+                    character.setRandomTarget();
+                }
+            });
+        }
+        
+        // Inicialización
+        function init() {
+            createMapElements();
+            createCharacters();
+            updateStats();
+            
+            // Event listeners
+            btnPeace.addEventListener('click', setPeaceMode);
+            btnWar.addEventListener('click', setWarMode);
+            
+            // Iniciar en modo paz
+            setPeaceMode();
+            
+            // Iniciar animación
+            animate();
+        }
+        
+        // Ajustar al cambiar tamaño de ventana
+        window.addEventListener('resize', () => {
+            // Asegurar que los personajes se mantengan dentro de los límites
+            characters.forEach(character => {
+                if (character.x > window.innerWidth - 40) {
+                    character.x = window.innerWidth - 40;
+                }
+                if (character.y > window.innerHeight - 50) {
+                    character.y = window.innerHeight - 50;
+                }
+            });
+        });
+        
+        // Iniciar la aplicación
+        init();
+    </script>
+</body>
+</html>

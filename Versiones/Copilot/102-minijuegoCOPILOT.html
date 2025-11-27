@@ -1,0 +1,304 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>MiniJuego Mejorado V3</title>
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #222;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+    }
+    #sidebarP1, #sidebarP2 {
+        width: 200px;
+        background: #111;
+        padding: 10px;
+        border: 2px solid #444;
+        font-size: 30px;
+    }
+    #sidebarP2 {
+        position: fixed;
+        right: 0;
+        top: 0;
+    }
+    .weapon {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+        cursor: pointer;
+    }
+    #gameArea {
+        position: relative;
+        width: 800px;
+        height: 800px;
+        margin: 20px auto;
+        background: #333;
+        border: 4px solid #fff;
+    }
+    .quadrant {
+        position: absolute;
+        width: 50%;
+        height: 50%;
+        border: 1px dashed #555;
+    }
+    .quadrant:nth-child(1) { top: 0; left: 0; }
+    .quadrant:nth-child(2) { top: 0; left: 50%; }
+    .quadrant:nth-child(3) { top: 50%; left: 0; }
+    .quadrant:nth-child(4) { top: 50%; left: 50%; }
+    .player, .enemy {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        background: #0f0;
+        border-radius: 50%;
+    }
+    .enemy { background: #f00; }
+    .bullet {
+        position: absolute;
+        width: 8px;
+        height: 8px;
+        background: #ff0;
+        border-radius: 50%;
+    }
+    .health-bar {
+        position: absolute;
+        width: 30px;
+        height: 5px;
+        background: red;
+        top: -8px;
+        left: 0;
+    }
+    #ggMessage {
+        display: none;
+        font-size: 48px;
+        color: #0f0;
+        margin-top: 20px;
+    }
+</style>
+</head>
+<body>
+<div id="sidebarP1">
+    <h2>Jugador 1</h2>
+    <div id="weaponListP1"></div>
+</div>
+<div>
+    <h1 style="text-align:center;">MiniJuego Mejorado V3</h1>
+    <div id="menu">
+        <button onclick="startGame('single')">Jugador Único</button>
+        <button onclick="startGame('multi')">Multijugador</button>
+    </div>
+    <div id="gameArea">
+        <div class="quadrant"></div>
+        <div class="quadrant"></div>
+        <div class="quadrant"></div>
+        <div class="quadrant"></div>
+    </div>
+    <div id="ggMessage">GG</div>
+</div>
+<div id="sidebarP2">
+    <h2>Jugador 2</h2>
+    <div id="weaponListP2"></div>
+</div>
+
+<script>
+const gameArea = document.getElementById('gameArea');
+const ggMessage = document.getElementById('ggMessage');
+const weaponListP1 = document.getElementById('weaponListP1');
+const weaponListP2 = document.getElementById('weaponListP2');
+let players = [];
+let enemies = [];
+let bullets = [];
+let gameRunning = false;
+let weapons = [
+    {name:'COLT M1911A1'},
+    {name:'USP'},
+    {name:'KAR98K'},
+    {name:'UZI'},
+    {name:'AUG A1'}
+];
+let currentWeaponP1 = weapons[0];
+let currentWeaponP2 = weapons[1];
+let keysPressed = {};
+
+function randomName() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    return 'Player_' + chars[Math.floor(Math.random()*chars.length)] + Math.floor(Math.random()*100);
+}
+
+function renderWeapons() {
+    weaponListP1.innerHTML = '';
+    weaponListP2.innerHTML = '';
+    weapons.forEach((w,i)=>{
+        const div1 = document.createElement('div');
+        div1.className = 'weapon';
+        div1.innerHTML = `<span>${w.name}</span><span>∞</span>`;
+        div1.onclick = ()=>{ currentWeaponP1 = w; };
+        weaponListP1.appendChild(div1);
+
+        const div2 = document.createElement('div');
+        div2.className = 'weapon';
+        div2.innerHTML = `<span>${w.name}</span><span>∞</span>`;
+        div2.onclick = ()=>{ currentWeaponP2 = w; };
+        weaponListP2.appendChild(div2);
+    });
+}
+
+function startGame(mode) {
+    document.getElementById('menu').style.display = 'none';
+    gameArea.style.display = 'block';
+    gameRunning = true;
+    renderWeapons();
+
+    if (mode === 'single') {
+        players.push(createPlayer(100,100,randomName(),'player1'));
+    } else {
+        players.push(createPlayer(100,100,randomName(),'player1'));
+        players.push(createPlayer(600,600,randomName(),'player2'));
+    }
+
+    for (let i=0; i<5; i++) {
+        enemies.push(createEnemy(Math.random()*750, Math.random()*750));
+    }
+
+    gameLoop();
+}
+
+function createPlayer(x,y,name,id) {
+    const div = document.createElement('div');
+    div.className = 'player';
+    div.style.left = x+'px';
+    div.style.top = y+'px';
+    div.dataset.name = name;
+    div.dataset.id = id;
+    const health = document.createElement('div');
+    health.className = 'health-bar';
+    div.appendChild(health);
+    gameArea.appendChild(div);
+    return {el: div, x:x, y:y, speed:8, health:100, direction:{x:0,y:-1}};
+}
+
+function createEnemy(x,y) {
+    const div = document.createElement('div');
+    div.className = 'enemy';
+    div.style.left = x+'px';
+    div.style.top = y+'px';
+    const health = document.createElement('div');
+    health.className = 'health-bar';
+    div.appendChild(health);
+    gameArea.appendChild(div);
+    return {el: div, x:x, y:y, speed:2, health:50, dirX:(Math.random()>0.5?1:-1), dirY:(Math.random()>0.5?1:-1)};
+}
+
+document.addEventListener('keydown', e => {
+    keysPressed[e.key] = true;
+    if (!gameRunning) return;
+
+    players.forEach(p => {
+        if (p.el.dataset.id === 'player1') {
+            if (e.key === ' ') shoot(p,currentWeaponP1);
+            if (e.key === 'z') changeWeapon('p1');
+        }
+        if (p.el.dataset.id === 'player2') {
+            if (e.key === 'Enter') shoot(p,currentWeaponP2);
+            if (e.key === '\\') changeWeapon('p2');
+        }
+    });
+});
+
+document.addEventListener('keyup', e => {
+    delete keysPressed[e.key];
+});
+
+function changeWeapon(player) {
+    if (player==='p1') {
+        let index = weapons.indexOf(currentWeaponP1);
+        currentWeaponP1 = weapons[(index+1)%weapons.length];
+    } else {
+        let index = weapons.indexOf(currentWeaponP2);
+        currentWeaponP2 = weapons[(index+1)%weapons.length];
+    }
+    renderWeapons();
+}
+
+function shoot(player,weapon) {
+    const bullet = document.createElement('div');
+    bullet.className = 'bullet';
+    bullet.style.left = (player.x+10)+'px';
+    bullet.style.top = (player.y+10)+'px';
+    gameArea.appendChild(bullet);
+    bullets.push({el: bullet, x: player.x+10, y: player.y+10, dx:player.direction.x, dy:player.direction.y, speed:7});
+}
+
+function gameLoop() {
+    if (!gameRunning) return;
+
+    // Movimiento simultáneo
+    players.forEach(p => {
+        if (p.el.dataset.id==='player1') {
+            if (keysPressed['w']){ p.y-=p.speed; p.direction={x:0,y:-1}; }
+            if (keysPressed['s']){ p.y+=p.speed; p.direction={x:0,y:1}; }
+            if (keysPressed['a']){ p.x-=p.speed; p.direction={x:-1,y:0}; }
+            if (keysPressed['d']){ p.x+=p.speed; p.direction={x:1,y:0}; }
+        }
+        if (p.el.dataset.id==='player2') {
+            if (keysPressed['ArrowUp']){ p.y-=p.speed; p.direction={x:0,y:-1}; }
+            if (keysPressed['ArrowDown']){ p.y+=p.speed; p.direction={x:0,y:1}; }
+            if (keysPressed['ArrowLeft']){ p.x-=p.speed; p.direction={x:-1,y:0}; }
+            if (keysPressed['ArrowRight']){ p.x+=p.speed; p.direction={x:1,y:0}; }
+        }
+        p.x=Math.max(0,Math.min(770,p.x));
+        p.y=Math.max(0,Math.min(770,p.y));
+        p.el.style.left=p.x+'px';
+        p.el.style.top=p.y+'px';
+        p.el.querySelector('.health-bar').style.width=(p.health/100*30)+'px';
+    });
+
+    // Balas
+    bullets.forEach((b,i)=>{
+        b.x+=b.dx*b.speed;
+        b.y+=b.dy*b.speed;
+        b.el.style.left=b.x+'px';
+        b.el.style.top=b.y+'px';
+        if(b.x<0||b.x>800||b.y<0||b.y>800){
+            gameArea.removeChild(b.el);
+            bullets.splice(i,1);
+        }
+        enemies.forEach((en,j)=>{
+            if(Math.abs(b.x-en.x)<20&&Math.abs(b.y-en.y)<20){
+                en.health-=20;
+                if(en.health<=0){
+                    gameArea.removeChild(en.el);
+                    enemies.splice(j,1);
+                }
+                gameArea.removeChild(b.el);
+                bullets.splice(i,1);
+            }
+        });
+    });
+
+    // Enemigos movimiento aleatorio
+    enemies.forEach(en=>{
+        en.x+=en.dirX*en.speed;
+        en.y+=en.dirY*en.speed;
+        if(en.x<=0||en.x>=770) en.dirX*=-1;
+        if(en.y<=0||en.y>=770) en.dirY*=-1;
+        en.el.style.left=en.x+'px';
+        en.el.style.top=en.y+'px';
+        en.el.querySelector('.health-bar').style.width=(en.health/50*30)+'px';
+    });
+
+    if(enemies.length===0){
+        gameRunning=false;
+        ggMessage.style.display='block';
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+</script>
+</body>
+</html>
+
