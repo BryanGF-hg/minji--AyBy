@@ -1,0 +1,23 @@
+<svg width="800" height="300" viewBox="0 0 800 300" xmlns="http://www.w3.org/2000/svg">
+  <!-- Culata -->
+  <rect x="50" y="100" width="200" height="40" fill="#8B4513" rx="5"/>
+  
+  <!-- Caja del mecanismo -->
+  <rect x="250" y="90" width="80" height="60" fill="#2F4F4F" rx="8"/>
+  
+  <!-- Cañón -->
+  <rect x="330" y="105" width="300" height="30" fill="#696969"/>
+  
+  <!-- Mira telescópica -->
+  <rect x="280" y="50" width="150" height="30" fill="#36454F" rx="15"/>
+  <circle cx="355" cy="65" r="20" fill="#1C1C1C" stroke="#808080" stroke-width="2"/>
+  <circle cx="355" cy="65" r="8" fill="#006400"/>
+  
+  <!-- Gatillo -->
+  <rect x="260" y="140" width="20" height="40" fill="#2F4F4F" rx="5"/>
+  
+  <!-- Detalles -->
+  <line x1="180" y1="100" x2="180" y2="140" stroke="#654321" stroke-width="3"/>
+  <line x1="320" y1="105" x2="320" y2="135" stroke="#808080" stroke-width="2"/>
+  <line x1="500" y1="105" x2="500" y2="135" stroke="#808080" stroke-width="2"/>
+</svg>
